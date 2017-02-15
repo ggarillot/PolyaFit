@@ -46,13 +46,6 @@ double PolyaFitter::baseFunc(double* x , const double* params)
 
 double PolyaFitter::polyaEff(double x , const double* params)
 {
-	//	double alpha = params[1] + 1 ;
-	//	double theta = params[0]/(params[1] + 1) ;
-
-	//	return params[2]*ROOT::Math::gamma_cdf_c(x , alpha , theta , 0.0) ;
-	//	return params[2] - params[3]*ROOT::Math::gamma_cdf(x , alpha , theta , 0.0) ;
-
-
 	double alpha = params[0]/params[1] ;
 	double delta = params[1] ;
 

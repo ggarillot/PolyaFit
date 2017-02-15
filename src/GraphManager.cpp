@@ -158,17 +158,13 @@ void GraphManager::ProcessFile(std::string fileName)
 	tree->SetBranchAddress("MultiplicityError" , &multiplicityError) ;
 	tree->SetBranchAddress("Position" , &position) ;
 
-	AsicID globalKey(-1,-1,-1) ;
 	std::vector<double> globalEff(thresholds->size() , 0.0) ;
 	std::vector<double> globalEffErr(thresholds->size() , 0.0) ;
-	int nOkAsicsGlobal = 0 ;
 
 	int iEntry = 0 ;
 	while ( tree->GetEntry(iEntry++) )
 	{
 		if ( padID > -1 ) // because padID > -1 means stats for an individual pad
-			continue ;
-		if ( layerID > -1 && asicID == -1 )
 			continue ;
 
 		AsicID asicKey(layerID , difID , asicID) ;
@@ -182,10 +178,9 @@ void GraphManager::ProcessFile(std::string fileName)
 		graph->SetMarkerStyle(20) ;
 		graphMap.insert( std::make_pair(asicKey , graph) ) ;
 
-		nOkAsicsGlobal++ ;
-
 		mulMap.insert( std::make_pair(asicKey , multiplicity) ) ;
 		mulErrMap.insert( std::make_pair(asicKey , multiplicityError) ) ;
+		posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
 	}
 
 	file->Close() ;
@@ -271,6 +266,8 @@ void GraphManager::ProcessData(std::string dataPath)
 			{
 				mulMap.insert( std::make_pair( asicKey , multiplicity) ) ;
 				mulErrMap.insert( std::make_pair( asicKey , multiplicity) ) ;
+
+				posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
 				continue ;
 			}
 
@@ -320,137 +317,6 @@ void GraphManager::ProcessData(std::string dataPath)
 	}
 
 }
-
-/*
-void GraphManager::createGraphsData()
-{
-
-
-	std::map<AsicID , std::vector<double> > thresholdsMap ;
-	std::map<AsicID , std::vector<double> > effMap ;
-	std::map<AsicID , std::vector<double> > effErrMap ;
-	std::map<AsicID , double> mulMap ;
-	std::map<AsicID , double> mulErrMap ;
-	std::map<AsicID , std::vector<double> > positionMap ;
-
-
-
-	int layerID ;
-	int difID ;
-	int asicID ;
-	int padID ;
-	std::vector<double> efficiencies ;
-	std::vector<double> efficienciesError ;
-	std::vector<double> thresholds ;
-	double multiplicity ;
-	double multiplicityError ;
-	int nTracks ;
-	std::vector<double> position ;
-
-	TFile* file = new TFile("temp.root" , "RECREATE") ;
-	TTree* tree = new TTree("tree" , "Shower variables") ;
-
-	tree->Branch("LayerID" , &layerID) ;
-	tree->Branch("DifID" , &difID) ;
-	tree->Branch("AsicID" , &asicID) ;
-	tree->Branch("PadID" , &padID) ;
-	tree->Branch("Efficiencies" , "std::vector<double>" , &efficiencies ) ;
-	tree->Branch("EfficienciesError" , "std::vector<double>" , &efficienciesError ) ;
-	tree->Branch("Thresholds" , &thresholds) ;
-	tree->Branch("Multiplicity" , &multiplicity) ;
-	tree->Branch("MultiplicityError" , &multiplicityError) ;
-	tree->Branch("Ntrack" , &nTracks) ;
-	tree->Branch("Position" , &position) ;
-
-
-	for ( unsigned int i = 0 ; i < runs.size() ; i++ )
-	{
-		int run = runs.at(i) ;
-		double thr1 = thr1Vec.at(i) ;
-		double thr2 = thr2Vec.at(i) ;
-		double thr3 = thr3Vec.at(i) ;
-
-		std::stringstream fileName ;
-		fileName << "/home/garillot/files/PolyaScan/DATA/" << "map_" << run << ".root" ;
-		std::cout << "Open " << fileName.str() << std::endl ;
-		TFile* tempFile = new TFile(fileName.str().c_str() , "READ") ;
-		if (!file)
-		{
-			std::cerr << "ERROR : file not found ( " << fileName.str() << " )" << std::endl ;
-			continue ;
-		}
-
-		TTree* fileTree = dynamic_cast<TTree*>( tempFile->Get("tree") ) ;
-		if (!fileTree)
-		{
-			std::cout << "Tree not present in " << fileName.str() << std::endl ;
-			continue ;
-		}
-
-		std::vector<double>* effTemp = NULL ;
-		std::vector<double>* effErrTemp = NULL ;
-		std::vector<double>* positionTemp = NULL ;
-
-		std::vector<double>* thresholdsFile = dynamic_cast< std::vector<double>* >(file->Get("Thresholds") ) ;
-
-		tree->SetBranchAddress("LayerID" , &layerID) ;
-		tree->SetBranchAddress("DifID" , &difID) ;
-		tree->SetBranchAddress("AsicID" , &asicID) ;
-		tree->SetBranchAddress("PadID" , &padID) ;
-		tree->SetBranchAddress("Efficiencies" , &effTemp) ;
-		tree->SetBranchAddress("EfficienciesError" , &effErrTemp) ;
-		tree->SetBranchAddress("Multiplicity" , &multiplicity) ;
-		tree->SetBranchAddress("MultiplicityError" , &multiplicityError) ;
-		tree->SetBranchAddress("Ntrack" , &nTracks) ;
-		tree->SetBranchAddress("Position" , &position) ;
-
-		int iEntry = 0 ;
-
-		while ( fileTree->GetEntry(iEntry++) )
-		{
-			if ( padID > -1 )
-				continue ;
-			if ( asicID == -1 && layerID > -1 )
-				continue ;
-
-			AsicID _asicID(layerID , difID , asicID) ;
-
-			if ( thresholdsMap.find( _asicID ) == thresholdsMap.end() )
-			{
-				thresholdsMap.insert( std::make_pair( _asicID , std::vector<double>() ) ) ;
-				effMap.insert( std::make_pair( _asicID , std::vector<double>() ) ) ;
-				effErrMap.insert( std::make_pair( _asicID , std::vector<double>() ) ) ;
-				positionMap.insert( std::make_pair( _asicID , std::vector<double>(*positionTemp) ) ) ;
-				mulMap.insert( std::make_pair( _asicID , 0.0) ) ;
-				mulErrMap.insert( std::make_pair( _asicID , 0.0) ) ;
-			}
-
-
-			for ( unsigned int j = 0 ; j < thresholdsFile->size() ; ++j )
-			{
-				thresholdsMap[_asicID].push_back( thresholdsFile->at(j) ) ;
-				effMap[_asicID].push_back( effTemp->at(i) ) ;
-				effErrMap[_asicID].push_back( effErrTemp->at(i) ) ;
-
-
-				//if mul faire machin
-
-
-
-			}
-
-			tree->Fill() ;
-
-			tempFile->Close() ;
-		}
-	}
-
-	file->cd() ;
-	tree->Write() ;
-	file->WriteObject( &thresholds , "Thresholds" ) ;
-	file->Close() ;
-}
-*/
 
 void GraphManager::writeGraphsInFile(std::string fileName)
 {
@@ -530,10 +396,11 @@ void GraphManager::writeResultTree(std::string fileName)
 	double mul , mulError ;
 	double chi2 ;
 	int minimStatus ;
+	std::vector<double> position ;
 
-	tree->Branch("layerID" , &layerID) ;
-	tree->Branch("difID" , &difID) ;
-	tree->Branch("asicID" , &asicID) ;
+	tree->Branch("LayerID" , &layerID) ;
+	tree->Branch("DifID" , &difID) ;
+	tree->Branch("AsicID" , &asicID) ;
 	tree->Branch("mul" , &mul) ;
 	tree->Branch("mulErr" , &mulError) ;
 	tree->Branch("qbar" , &qbar) ;
@@ -544,6 +411,7 @@ void GraphManager::writeResultTree(std::string fileName)
 	tree->Branch("eff0Error" , &eff0Error) ;
 	tree->Branch("chi2" , &chi2) ;
 	tree->Branch("minimStatus" , &minimStatus) ;
+	tree->Branch("Position" , &position) ;
 
 	for ( std::map<AsicID,PolyaFitter::PolyaFitResult>::const_iterator it = resultMap.begin() ; it != resultMap.end() ; ++it )
 	{
@@ -551,7 +419,30 @@ void GraphManager::writeResultTree(std::string fileName)
 		PolyaFitter::PolyaFitResult res = it->second ;
 
 		if ( mulMap.find(id) == mulMap.end() )
+		{
 			continue ;
+//			layerID = id.layerID ;
+//			difID = id.difID ;
+//			asicID = id.asicID ;
+
+//			qbar = -1 ;
+//			qbarError = -1 ;
+//			delta = -1 ;
+//			deltaError = -1 ;
+//			eff0 = 0 ;
+//			eff0Error = 0 ;
+//			chi2 = -1 ;
+
+//			minimStatus = -1 ;
+
+//			mul = 0 ;
+//			mulError = 0 ;
+//			position = posMap[it->first] ;
+
+//			tree->Fill() ;
+
+//			continue ;
+		}
 
 		layerID = id.layerID ;
 		difID = id.difID ;
@@ -569,6 +460,8 @@ void GraphManager::writeResultTree(std::string fileName)
 
 		mul = mulMap[it->first] ;
 		mulError = mulErrMap[it->first] ;
+
+		position = posMap[it->first] ;
 
 		tree->Fill() ;
 	}

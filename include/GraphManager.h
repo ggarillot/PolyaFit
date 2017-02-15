@@ -69,6 +69,7 @@ class GraphManager
 		std::map<AsicID,PolyaFitter::PolyaFitResult> resultMap ;
 		std::map<AsicID,double> mulMap ;
 		std::map<AsicID,double> mulErrMap ;
+		std::map<AsicID, std::vector<double> > posMap ;
 
 } ;
 

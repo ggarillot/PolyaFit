@@ -32,7 +32,8 @@ int main(int argc , char** argv)
 
 //	a.ProcessData( std::string("/home/garillot/files/PolyaScan/DATA") ) ;
 
-	a.ProcessFile( std::string("/home/garillot/files/PolyaScan/MulResults/map_7_0.5_0.3.root") ) ;
+	a.ProcessFile( std::string("/home/garillot/SDHCALMarlinProcessor/map_digitMapTest.root") ) ;
+//	a.ProcessFile( std::string("/home/garillot/files/PolyaScan/MulResults/map_7_0.5_0.3.root") ) ;
 
 //	a.openGraphs("Data_graphs.root") ;
 //	a.openGraphs("/home/garillot/files/PolyaScan/Graphs/20_16_0.2graphs.root") ;

@@ -33,12 +33,13 @@ int main(int argc , char** argv)
 	GraphManager a ;
 
 //	std::stringstream filePath ; filePath << "/home/garillot/files/PolyaScan/MulResults/map_" << qbar << "_" << delta << "_" << d << ".root" ;
+//	a.ProcessFile( filePath.str() ) ;
 	a.ProcessFile( inputFile ) ;
 
 	a.fitAllGraphs() ;
 
 //	std::stringstream outFilePath ; outFilePath << "/home/garillot/files/PolyaScan/Fits/Fits_" << qbar << "_" << delta << "_" << d << ".root" ;
-
+//	a.writeResultTree( outFilePath.str() ) ;
 	a.writeResultTree( outputFile ) ;
 
 	return 0 ;
