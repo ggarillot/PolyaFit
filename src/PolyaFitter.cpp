@@ -39,7 +39,7 @@ void PolyaFitter::deletePoints()
 	errors = NULL ;
 }
 
-double PolyaFitter::baseFunc(double* x , const double* params)
+double PolyaFitter::baseFunc(const double* x , const double* params)
 {
 	return polyaEff(*x , params) ;
 }

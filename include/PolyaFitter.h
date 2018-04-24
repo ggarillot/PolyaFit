@@ -3,6 +3,7 @@
 
 #include <TGraphErrors.h>
 #include <iostream>
+#include <vector>
 
 class PolyaFitter
 {
@@ -10,7 +11,7 @@ class PolyaFitter
 
 		PolyaFitter() ;
 		~PolyaFitter() ;
-		static double baseFunc(double* x , const double* params) ;
+		static double baseFunc(const double* x , const double* params) ;
 		static double polyaEff(double x , const double* params) ;
 
 		void getPoints(TGraphErrors* graph) ;
@@ -60,6 +61,9 @@ class PolyaFitter
 		double* q ;
 		double* values ;
 		double* errors ;
+
+		std::vector<double> lowerBound = {} ;
+		std::vector<double> upperBound = {} ;
 
 		unsigned int nParam ;
 		double* param ;

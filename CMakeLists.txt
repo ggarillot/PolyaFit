@@ -15,20 +15,21 @@ FIND_PACKAGE( ILCUTIL REQUIRED COMPONENTS ILCSOFT_CMAKE_MODULES )
 INCLUDE( ilcsoft_default_settings )
 
 FIND_PACKAGE( ROOT REQUIRED COMPONENTS TMVA XMLIO Minuit MLP MathMore MathCore Minuit2 ) # minimum required Marlin version
-INCLUDE_DIRECTORIES( ${ROOT_INCLUDE_DIRS} )
+INCLUDE_DIRECTORIES( SYSTEM ${ROOT_INCLUDE_DIRS} )
 LINK_LIBRARIES( ${ROOT_LIBRARIES} )
 ADD_DEFINITIONS( ${ROOT_DEFINITIONS} )
 
 ### LIBRARY #################################################################
 
+
 # definitions to pass to the compiler
-ADD_DEFINITIONS( "-Wall -ansi -pedantic" )
+ADD_DEFINITIONS( "-Wall -ansi -pedantic -std=c++11" )
 ADD_DEFINITIONS( "-Wno-long-long" )
 
-#include directories
+# include directories
 INCLUDE_DIRECTORIES( ./include )
 
-#add library
+# add library
 AUX_SOURCE_DIRECTORY( ./src library_sources )
 
 # display some variables and write them to cache
@@ -38,25 +39,13 @@ file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.h)
 
+add_library( MyLib ${sources} ${headers} )
 
-SET (Fit ./src/fit.cxx)
-SET (FitSim ./src/fitSim.cxx)
-SET (Draw ./src/draw.cxx)
-SET (Compar ./src/comparArnaud.cxx)
 
-#set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "../bin/")
-
-ADD_EXECUTABLE( Fit ${Fit} ${headers} ${sources} )
-ADD_EXECUTABLE( FitSim ${FitSim} ${headers} ${sources} )
-ADD_EXECUTABLE( Draw ${Draw} ${headers} ${sources} )
-ADD_EXECUTABLE( Compar ${Compar} ${headers} ${sources} )
-
-TARGET_LINK_LIBRARIES( Fit ${ROOT_COMPONENT_LIBRARIES} ${Boost_LIBRARIES} )
-TARGET_LINK_LIBRARIES( FitSim ${ROOT_COMPONENT_LIBRARIES} ${Boost_LIBRARIES} )
-TARGET_LINK_LIBRARIES( Draw ${ROOT_COMPONENT_LIBRARIES} ${Boost_LIBRARIES} )
-TARGET_LINK_LIBRARIES( Compar ${ROOT_COMPONENT_LIBRARIES} ${Boost_LIBRARIES} )
-
-INSTALL(TARGETS Fit RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-INSTALL(TARGETS FitSim RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-INSTALL(TARGETS Draw RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/bin)
-INSTALL(TARGETS Compar RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+file( GLOB APP_SOURCES ${PROJECT_SOURCE_DIR}/exec/*.cxx )
+foreach( testsourcefile ${APP_SOURCES} )
+	get_filename_component(testname ${testsourcefile} NAME_WE)
+	add_executable( ${testname} ${testsourcefile} )
+	target_link_libraries( ${testname} MyLib ${ROOT_COMPONENT_LIBRARIES} )
+	install(TARGETS ${testname} RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/bin)
+endforeach( testsourcefile ${APP_SOURCES} )

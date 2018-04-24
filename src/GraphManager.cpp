@@ -145,7 +145,8 @@ void GraphManager::ProcessFile(std::string fileName)
 	std::vector<double>* thresholds = reinterpret_cast< std::vector<double>* >( file->Get("Thresholds") ) ;
 
 	int difID , asicID , layerID , padID ;
-	double multiplicity , multiplicityError ;
+	std::vector<double>* multiplicities = NULL ;
+	std::vector<double>* multiplicitiesError = NULL ;
 	std::vector<double>* position = NULL ;
 
 	tree->SetBranchAddress("LayerID" , &layerID) ;
@@ -154,12 +155,10 @@ void GraphManager::ProcessFile(std::string fileName)
 	tree->SetBranchAddress("PadID" , &padID) ;
 	tree->SetBranchAddress("Efficiencies" , &efficiencies ) ;
 	tree->SetBranchAddress("EfficienciesError" , &efficienciesError ) ;
-	tree->SetBranchAddress("Multiplicity" , &multiplicity) ;
-	tree->SetBranchAddress("MultiplicityError" , &multiplicityError) ;
+	tree->SetBranchAddress("Multiplicities" , &multiplicities) ;
+	tree->SetBranchAddress("MultiplicitiesError" , &multiplicitiesError) ;
 	tree->SetBranchAddress("Position" , &position) ;
 
-	std::vector<double> globalEff(thresholds->size() , 0.0) ;
-	std::vector<double> globalEffErr(thresholds->size() , 0.0) ;
 
 	int iEntry = 0 ;
 	while ( tree->GetEntry(iEntry++) )
@@ -178,8 +177,8 @@ void GraphManager::ProcessFile(std::string fileName)
 		graph->SetMarkerStyle(20) ;
 		graphMap.insert( std::make_pair(asicKey , graph) ) ;
 
-		mulMap.insert( std::make_pair(asicKey , multiplicity) ) ;
-		mulErrMap.insert( std::make_pair(asicKey , multiplicityError) ) ;
+		mulMap.insert( std::make_pair(asicKey , multiplicities->at(0)) ) ;
+		mulErrMap.insert( std::make_pair(asicKey , multiplicitiesError->at(0)) ) ;
 		posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
 	}
 
@@ -190,7 +189,7 @@ void GraphManager::ProcessData(std::string dataPath)
 {
 	int runstmp[] = { 730630, 730627, 730626, 730625, 730619, 730618,
 					  730617, 730616, 730615, 730611, 730609, 730607,
-					  730569, 730568, 730567, 730566, 730631, 730633, 730545, 730677 } ; //730677
+					  730569, 730568, 730567, 730566, 730631, 730633, 730545, 730677 } ;
 	int dac0tmp[] = { 188,199,210,221,232,243,254,265,276,287,299,310,321,332,343,354,365,376,387,170 } ;
 	int dac1tmp[] = { 130,147,164,181,197,214,231,248,265,282,298,315,332,349,366,383,399,416,433,498 } ;
 	int dac2tmp[] = { 168,185,202,220,237,254,271,288,305,323,340,357,374,391,408,425,443,460,477,342 } ;
@@ -234,7 +233,7 @@ void GraphManager::ProcessData(std::string dataPath)
 		int difID , asicID , layerID , padID ;
 		double multiplicity , multiplicityError ;
 		std::vector<double>* position = NULL ;
-
+		//FIXME multiplicies is a vector now but still old data files need to reprocess data and update code
 		tree->SetBranchAddress("LayerID" , &layerID) ;
 		tree->SetBranchAddress("DifID" , &difID) ;
 		tree->SetBranchAddress("AsicID" , &asicID) ;
@@ -421,27 +420,27 @@ void GraphManager::writeResultTree(std::string fileName)
 		if ( mulMap.find(id) == mulMap.end() )
 		{
 			continue ;
-//			layerID = id.layerID ;
-//			difID = id.difID ;
-//			asicID = id.asicID ;
+			//			layerID = id.layerID ;
+			//			difID = id.difID ;
+			//			asicID = id.asicID ;
 
-//			qbar = -1 ;
-//			qbarError = -1 ;
-//			delta = -1 ;
-//			deltaError = -1 ;
-//			eff0 = 0 ;
-//			eff0Error = 0 ;
-//			chi2 = -1 ;
+			//			qbar = -1 ;
+			//			qbarError = -1 ;
+			//			delta = -1 ;
+			//			deltaError = -1 ;
+			//			eff0 = 0 ;
+			//			eff0Error = 0 ;
+			//			chi2 = -1 ;
 
-//			minimStatus = -1 ;
+			//			minimStatus = -1 ;
 
-//			mul = 0 ;
-//			mulError = 0 ;
-//			position = posMap[it->first] ;
+			//			mul = 0 ;
+			//			mulError = 0 ;
+			//			position = posMap[it->first] ;
 
-//			tree->Fill() ;
+			//			tree->Fill() ;
 
-//			continue ;
+			//			continue ;
 		}
 
 		layerID = id.layerID ;
@@ -491,14 +490,20 @@ void GraphManager::addPoint(TGraphErrors* graph, double x, double y, double ex ,
 	graph->SetPointError(point , ex , ey) ;
 }
 
-TGraphErrors* GraphManager::getGraph(int layer , int dif , int asic) const
+TGraphErrors* GraphManager::getGraph(AsicID id) const
 {
-	std::map<AsicID,TGraphErrors*>::const_iterator it = graphMap.find( AsicID(layer,dif,asic) ) ;
+	std::map<AsicID,TGraphErrors*>::const_iterator it = graphMap.find( id ) ;
 	if ( it == graphMap.end() )
-		return NULL ;
+		return nullptr ;
 	else
 		return it->second ;
 }
+
+TGraphErrors* GraphManager::getGraph(int layer , int dif , int asic) const
+{
+	return getGraph( AsicID(layer,dif,asic) ) ;
+}
+
 TGraphErrors* GraphManager::getGlobalGraph() const
 {
 	return getGraph(-1,-1,-1) ;

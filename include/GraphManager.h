@@ -54,6 +54,7 @@ class GraphManager
 		void ProcessData(std::string dataPath = "") ;
 
 		TGraphErrors* getGraph(int layer , int dif , int asic) const ;
+		TGraphErrors* getGraph(AsicID id) const ;
 		TGraphErrors* getGlobalGraph() const ;
 
 		void reset() ;
