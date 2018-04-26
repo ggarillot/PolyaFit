@@ -8,23 +8,11 @@
 #include <sstream>
 #include <set>
 #include <algorithm>
+#include <cassert>
 
 #include <TDirectory.h>
 #include <TList.h>
-
-GraphManager::GraphManager()
-{
-}
-
-
-GraphManager::~GraphManager()
-{
-	//	for ( std::map<AsicID,TGraphErrors*>::const_iterator it = graphMap.begin() ; it != graphMap.end() ; ++it )
-	//	{
-	//		if ( it->second )
-	//			delete it->second ;
-	//	}
-}
+#include <TEfficiency.h>
 
 void GraphManager::reset()
 {
@@ -71,13 +59,13 @@ void GraphManager::openGraphs(std::string fileName)
 	TList* layerList = graphsDir->GetListOfKeys() ;
 	TIter iter(layerList) ;
 
-	TObject* obj = NULL ;
+	TObject* obj = nullptr ;
 	while ( (obj = iter()) )
 	{
 		std::string name( obj->GetName() ) ;
 		if (name == std::string("Global") )
 		{
-			TGraphErrors* globalGraph = dynamic_cast<TGraphErrors*>( graphsDir->Get("Global") ) ;
+			TGraphAsymmErrors* globalGraph = dynamic_cast<TGraphAsymmErrors*>( graphsDir->Get("Global") ) ;
 			graphMap.insert( std::make_pair( AsicID(-1,-1,-1) , globalGraph) ) ;
 			continue ;
 		}
@@ -109,21 +97,21 @@ void GraphManager::openGraphsInLayer(TDirectoryFile* layerDir)
 	TList* graphList = layerDir->GetListOfKeys() ;
 	TIter iter(graphList) ;
 
-	TObject* obj = NULL ;
+	TObject* obj = nullptr ;
 	while ( (obj = iter()) )
 	{
 		std::string name( obj->GetName() ) ;
 
-		std::size_t found = name.find(",") ;
-		if ( found == std::string::npos )
+		std::size_t found2 = name.find(",") ;
+		if ( found2 == std::string::npos )
 			continue ;
 
-		const long pos = static_cast<const long>(found) ;
+		const long pos = static_cast<const long>(found2) ;
 
 		int difID = atoi( std::string( name.begin() , name.begin()+pos ).c_str() ) ;
 		int asicID = atoi( std::string( name.begin()+pos+1 , name.end() ).c_str() ) ;
 
-		TGraphErrors* graph = dynamic_cast<TGraphErrors*>( layerDir->Get( name.c_str() ) ) ;
+		TGraphAsymmErrors* graph = dynamic_cast<TGraphAsymmErrors*>( layerDir->Get( name.c_str() ) ) ;
 		graphMap.insert( std::make_pair( AsicID(layerID , difID , asicID) , graph) ) ;
 	}
 }
@@ -139,22 +127,24 @@ void GraphManager::ProcessFile(std::string fileName)
 		return ;
 	}
 
-	std::vector<double>* efficiencies = NULL ;
-	std::vector<double>* efficienciesError = NULL ;
+	std::vector<double>* efficiencies = nullptr ;
+	std::vector<double>* efficienciesLowerBound = nullptr ;
+	std::vector<double>* efficienciesUpperBound = nullptr ;
 
 	std::vector<double>* thresholds = reinterpret_cast< std::vector<double>* >( file->Get("Thresholds") ) ;
 
 	int difID , asicID , layerID , padID ;
-	std::vector<double>* multiplicities = NULL ;
-	std::vector<double>* multiplicitiesError = NULL ;
-	std::vector<double>* position = NULL ;
+	std::vector<double>* multiplicities = nullptr ;
+	std::vector<double>* multiplicitiesError = nullptr ;
+	std::vector<double>* position = nullptr ;
 
 	tree->SetBranchAddress("LayerID" , &layerID) ;
 	tree->SetBranchAddress("DifID" , &difID) ;
 	tree->SetBranchAddress("AsicID" , &asicID) ;
 	tree->SetBranchAddress("PadID" , &padID) ;
 	tree->SetBranchAddress("Efficiencies" , &efficiencies ) ;
-	tree->SetBranchAddress("EfficienciesError" , &efficienciesError ) ;
+	tree->SetBranchAddress("EfficienciesLowerBound" , &efficienciesLowerBound) ;
+	tree->SetBranchAddress("EfficienciesUpperBound" , &efficienciesUpperBound) ;
 	tree->SetBranchAddress("Multiplicities" , &multiplicities) ;
 	tree->SetBranchAddress("MultiplicitiesError" , &multiplicitiesError) ;
 	tree->SetBranchAddress("Position" , &position) ;
@@ -172,8 +162,17 @@ void GraphManager::ProcessFile(std::string fileName)
 		if ( (*std::max_element(efficiencies->begin() , efficiencies->end() )) < 0.1 )
 			continue ;
 
-		TGraphErrors* graph = NULL ;
-		graph = new TGraphErrors( static_cast<int>( thresholds->size() ) , &(*thresholds)[0] , &(*efficiencies)[0] , NULL , &(*efficienciesError)[0] ) ;
+		TGraphAsymmErrors* graph = nullptr ;
+
+		std::vector<double> low( efficiencies->size() , 0) ;
+		std::vector<double> high( efficiencies->size() , 0) ;
+
+		for ( unsigned int i = 0 ; i < efficiencies->size() ; ++i )
+		{
+			low[i] = efficiencies->at(i) - efficienciesLowerBound->at(i) ;
+			high[i] = efficienciesUpperBound->at(i) - efficiencies->at(i) ;
+		}
+		graph = new TGraphAsymmErrors( static_cast<int>( thresholds->size() ) , &(*thresholds)[0] , &(*efficiencies)[0] , nullptr , nullptr , &(low)[0] , &(high)[0] ) ;
 		graph->SetMarkerStyle(20) ;
 		graphMap.insert( std::make_pair(asicKey , graph) ) ;
 
@@ -215,7 +214,7 @@ void GraphManager::ProcessData(std::string dataPath)
 		thresholds.push_back( thr3Vec.at(iRun) ) ;
 
 		std::stringstream filePath ;
-		filePath << dataPath << "/map_" << runs.at(iRun) << ".root" ;
+		filePath << dataPath << "/Eff_" << runs.at(iRun) << ".root" ;
 
 		std::cout << "Process " << filePath.str() << std::endl ;
 		TFile* file = new TFile( filePath.str().c_str() , "READ") ;
@@ -224,29 +223,38 @@ void GraphManager::ProcessData(std::string dataPath)
 		{
 			std::cout << "Error in ProcessData : tree not present in " << filePath.str() << std::endl ;
 			file->Close() ;
-			return ;
+//			return ;
+			continue ;
 		}
 
-		std::vector<double>* efficiencies = NULL ;
-		std::vector<double>* efficienciesError = NULL ;
+		std::vector<double>* efficiencies = nullptr ;
+		std::vector<double>* efficienciesLowerBound = nullptr ;
+		std::vector<double>* efficienciesUpperBound = nullptr ;
+
 
 		int difID , asicID , layerID , padID ;
-		double multiplicity , multiplicityError ;
-		std::vector<double>* position = NULL ;
-		//FIXME multiplicies is a vector now but still old data files need to reprocess data and update code
+		std::vector<double>* multiplicities = nullptr ;
+		std::vector<double>* multiplicitiesError = nullptr ;
+		std::vector<double>* position = nullptr ;
+
+		int nTrack ;
+		int globalNTrack = 0 ;
+
 		tree->SetBranchAddress("LayerID" , &layerID) ;
 		tree->SetBranchAddress("DifID" , &difID) ;
 		tree->SetBranchAddress("AsicID" , &asicID) ;
 		tree->SetBranchAddress("PadID" , &padID) ;
 		tree->SetBranchAddress("Efficiencies" , &efficiencies) ;
-		tree->SetBranchAddress("EfficienciesError" , &efficienciesError) ;
-		tree->SetBranchAddress("Multiplicity" , &multiplicity) ;
-		tree->SetBranchAddress("MultiplicityError" , &multiplicityError) ;
+		tree->SetBranchAddress("EfficienciesLowerBound" , &efficienciesLowerBound) ;
+		tree->SetBranchAddress("EfficienciesUpperBound" , &efficienciesUpperBound) ;
+		tree->SetBranchAddress("Multiplicities" , &multiplicities) ;
+		tree->SetBranchAddress("MultiplicitiesError" , &multiplicitiesError) ;
 		tree->SetBranchAddress("Position" , &position) ;
+		tree->SetBranchAddress("Ntrack" , &nTrack) ;
 
 		AsicID globalKey(-1,-1,-1) ;
 		std::vector<double> globalEff(3 , 0.0) ;
-		std::vector<double> globalEffErr(3 , 0.0) ;
+
 		int nOkAsicsGlobal = 0 ;
 
 
@@ -263,8 +271,8 @@ void GraphManager::ProcessData(std::string dataPath)
 
 			if ( runs.at(iRun) == 730677 )
 			{
-				mulMap.insert( std::make_pair( asicKey , multiplicity) ) ;
-				mulErrMap.insert( std::make_pair( asicKey , multiplicity) ) ;
+				mulMap.insert( std::make_pair( asicKey , multiplicities->at(0) ) ) ;
+				mulErrMap.insert( std::make_pair( asicKey , multiplicitiesError->at(0) ) ) ;
 
 				posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
 				continue ;
@@ -276,21 +284,25 @@ void GraphManager::ProcessData(std::string dataPath)
 				continue ;
 
 
-			std::map<AsicID,TGraphErrors*>::const_iterator it = graphMap.find(asicKey) ;
+			std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(asicKey) ;
 			if ( it == graphMap.end() )
 			{
-				TGraphErrors* graph = new TGraphErrors ;
+				TGraphAsymmErrors* graph = new TGraphAsymmErrors ;
 				graphMap.insert( std::make_pair(asicKey , graph) ) ;
 				it = graphMap.find(asicKey) ;
 			}
 
 			for ( unsigned int i = 0 ; i < 3 ; ++i )
 			{
-				addPoint(it->second, thresholds.at(i), efficiencies->at(i), 0.0 , efficienciesError->at(i) ) ;
+				auto errLow = efficiencies->at(i) - efficienciesLowerBound->at(i) ;
+				auto errHigh = efficienciesUpperBound->at(i) - efficiencies->at(i) ;
+
+				assert( errLow >= 0 && errHigh >= 0 ) ;
+				addPoint(it->second, thresholds.at(i), efficiencies->at(i) , errLow , errHigh ) ;
 
 				globalEff.at(i) += efficiencies->at(i) ;
-				globalEffErr.at(i) += 1.0/( efficienciesError->at(i)*efficienciesError->at(i) ) ;
 			}
+			globalNTrack += nTrack ;
 			nOkAsicsGlobal++ ;
 		}
 
@@ -301,16 +313,29 @@ void GraphManager::ProcessData(std::string dataPath)
 
 
 
-		TGraphErrors* graph = new TGraphErrors ;
+		TGraphAsymmErrors* graph = new TGraphAsymmErrors ;
 		graphMap.insert( std::make_pair(globalKey , graph) ) ;
-		std::map<AsicID,TGraphErrors*>::const_iterator it = graphMap.find(globalKey) ;
+		std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(globalKey) ;
 
 		for ( unsigned int i = 0 ; i < 3 ; ++i )
 		{
 			globalEff.at(i) /= nOkAsicsGlobal ;
-			globalEffErr.at(i) = std::sqrt( 1.0/globalEffErr.at(i) ) ;
 
-			addPoint(it->second , thresholds.at(i) , globalEff.at(i) , 0.0 , globalEffErr.at(i) ) ;
+			constexpr double level = 0.683 ;
+
+			double a = globalEff.at(i)*globalNTrack + 1 ;
+			double b = globalNTrack - globalEff.at(i)*globalNTrack + 1 ;
+
+			double lowerBound = 0 ;
+			double upperBound = 0 ;
+			TEfficiency::BetaShortestInterval( level , a , b , lowerBound , upperBound ) ;
+
+			auto errLow = globalEff.at(i) - lowerBound ;
+			auto errHigh = upperBound - globalEff.at(i) ;
+
+			assert( errLow > 0 && errHigh > 0 ) ;
+
+			addPoint(it->second , thresholds.at(i) , globalEff.at(i) , errLow , errHigh ) ;
 		}
 
 	}
@@ -324,7 +349,7 @@ void GraphManager::writeGraphsInFile(std::string fileName)
 	TDirectory* dir = file->mkdir("Graphs") ;
 	dir->cd() ;
 
-	for ( std::map<AsicID,TGraphErrors*>::iterator it = graphMap.begin() ; it != graphMap.end() ; ++it )
+	for ( std::map<AsicID,TGraphAsymmErrors*>::iterator it = graphMap.begin() ; it != graphMap.end() ; ++it )
 	{
 		std::stringstream graphName ;
 
@@ -356,7 +381,7 @@ void GraphManager::writeGraphsInFile(std::string fileName)
 PolyaFitter::PolyaFitResult GraphManager::fitGraph(int layer , int dif , int asic)
 {
 	AsicID id(layer,dif,asic) ;
-	std::map<AsicID,TGraphErrors*>::iterator it = graphMap.find( id ) ;
+	std::map<AsicID,TGraphAsymmErrors*>::iterator it = graphMap.find( id ) ;
 	if ( it == graphMap.end() )
 	{
 		std::cerr << "ERROR : graph not present" << std::endl ;
@@ -375,7 +400,7 @@ std::map<GraphManager::AsicID,PolyaFitter::PolyaFitResult> GraphManager::fitAllG
 {
 	resultMap.clear() ;
 
-	for ( std::map<AsicID,TGraphErrors*>::iterator it = graphMap.begin() ; it != graphMap.end() ; ++it )
+	for ( std::map<AsicID,TGraphAsymmErrors*>::iterator it = graphMap.begin() ; it != graphMap.end() ; ++it )
 		resultMap.insert( std::make_pair(it->first , fitGraph(it->first.layerID , it->first.difID , it->first.asicID) ) ) ;
 
 	return resultMap ;
@@ -478,7 +503,7 @@ void GraphManager::writeResultTree(double qbar , double delta)
 }
 
 
-void GraphManager::addPoint(TGraphErrors* graph, double x, double y, double ex , double ey)
+void GraphManager::addPoint(TGraphAsymmErrors* graph , double x , double y , double ey)
 {
 	if (!graph)
 	{
@@ -487,24 +512,36 @@ void GraphManager::addPoint(TGraphErrors* graph, double x, double y, double ex ,
 	}
 	int point = graph->GetN() ;
 	graph->SetPoint(point , x , y) ;
-	graph->SetPointError(point , ex , ey) ;
+	graph->SetPointError(point , 0 , 0 , ey , ey) ;
 }
 
-TGraphErrors* GraphManager::getGraph(AsicID id) const
+void GraphManager::addPoint(TGraphAsymmErrors* graph , double x , double y , double eylow , double eyhigh)
 {
-	std::map<AsicID,TGraphErrors*>::const_iterator it = graphMap.find( id ) ;
+	if (!graph)
+	{
+		std::cerr << "ERROR in GraphManager::addPoint : graph ptr = NULL" << std::endl ;
+		return ;
+	}
+	int point = graph->GetN() ;
+	graph->SetPoint(point , x , y) ;
+	graph->SetPointError(point , 0 , 0 , eylow , eyhigh) ;
+}
+
+TGraphAsymmErrors* GraphManager::getGraph(AsicID id) const
+{
+	std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find( id ) ;
 	if ( it == graphMap.end() )
 		return nullptr ;
 	else
 		return it->second ;
 }
 
-TGraphErrors* GraphManager::getGraph(int layer , int dif , int asic) const
+TGraphAsymmErrors* GraphManager::getGraph(int layer , int dif , int asic) const
 {
 	return getGraph( AsicID(layer,dif,asic) ) ;
 }
 
-TGraphErrors* GraphManager::getGlobalGraph() const
+TGraphAsymmErrors* GraphManager::getGlobalGraph() const
 {
 	return getGraph(-1,-1,-1) ;
 }

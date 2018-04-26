@@ -7,36 +7,21 @@
 #include <Math/Functor.h>
 
 PolyaFitter::PolyaFitter()
+	: fitResult()
 {
 	nParam = 3 ;
-	//	nParam = 4 ;
-	q = NULL ;
-	values = NULL ;
-	errors = NULL ;
-
-	param = new double[nParam] ;
+	param = std::vector<double>(nParam , 0) ;
 	setParams() ;
 }
 
 PolyaFitter::~PolyaFitter()
 {
-	if (param)
-		delete[] param ;
 	deletePoints() ;
 }
 
 void PolyaFitter::deletePoints()
 {
-	if (q)
-		delete[] q ;
-	if (values)
-		delete[] values ;
-	if (errors)
-		delete[] errors ;
 
-	q = NULL ;
-	values = NULL ;
-	errors = NULL ;
 }
 
 double PolyaFitter::baseFunc(const double* x , const double* params)
@@ -52,43 +37,39 @@ double PolyaFitter::polyaEff(double x , const double* params)
 	return params[2]*ROOT::Math::gamma_cdf_c(x , alpha , delta , 0.0) ;
 }
 
-void PolyaFitter::getPoints(TGraphErrors* graph)
+void PolyaFitter::getPoints(TGraphAsymmErrors* graph)
 {
 	nPoints = static_cast<unsigned int>( graph->GetN() ) ;
 
-	q = new double[nPoints] ;
-	values = new double[nPoints] ;
-	errors = new double[nPoints] ;
+	q = std::vector<double>( nPoints , 0 ) ;
+	values = std::vector<double>( nPoints , 0 ) ;
 
-	//if an error == 0, it will 'destroy' the fit, so if an error == 0, i put the minimum error of all other points instead
-	double minError = -1 ;
-	for ( unsigned int i = 0 ; i < nPoints ; i++ )
-	{
-		if ( minError < 0 && graph->GetEY()[i] > 0 )
-		{
-			minError = graph->GetEY()[i] ;
-			continue ;
-		}
+	lowerBound = std::vector<double>( nPoints , 0 ) ;
+	upperBound = std::vector<double>( nPoints , 0 ) ;
 
-		if ( graph->GetEY()[i] < minError )
-			minError = graph->GetEY()[i] ;
-	}
-
-	if (minError < 0)
-		minError = 1.0 ;
+	//if an error == 0, it will 'destroy' the fit
 
 	for ( unsigned int i = 0 ; i < nPoints ; i++ )
 	{
 		q[i] = graph->GetX()[i] ;
 		values[i] = graph->GetY()[i] ;
 
-		if ( graph->GetEY()[i] < 1e-100 )
+		if ( graph->GetErrorYlow( static_cast<int>(i) ) < zeroLimit && values[i] > zeroLimit )
 		{
-			std::cout << "err" << i << " = 0 , set to " << minError << " instead" << std::endl ;
-			errors[i] = minError ;
+			std::cout << "errlow" << i << " = 0 , set to 1e-12 instead" << std::endl ;
+			lowerBound[i] = 1e-12 ;
 		}
 		else
-			errors[i] = graph->GetEY()[i] ;
+			lowerBound[i] = graph->GetErrorYlow( static_cast<int>(i) ) ;
+
+
+		if ( graph->GetErrorYhigh( static_cast<int>(i) ) < zeroLimit && (1.0-values[i]) > zeroLimit )
+		{
+			std::cout << "errhigh" << i << " = 0 , set to 1e-12 instead" << std::endl ;
+			upperBound[i] = 1e-12 ;
+		}
+		else
+			upperBound[i] = graph->GetErrorYhigh( static_cast<int>(i) ) ;
 	}
 }
 
@@ -99,7 +80,7 @@ void PolyaFitter::setParams(const double* params)
 		param[0] = 4.5 ;
 		param[1] = 2 ;
 
-		if (values)
+		if ( ! values.empty() )
 		{
 			param[2] = values[0] ;
 
@@ -123,15 +104,31 @@ double PolyaFitter::functionToMinimize(const double* params)
 
 	for( unsigned int i = 0 ; i < nPoints ; i++ )
 	{
-		if ( errors[i] < 1e-100 )
+		if ( lowerBound[i] < 1e-100 && values[i] > zeroLimit )
 		{
-			std::cout << "err" << i << " = 0 , set to 1e-12" << std::endl ;
-			errors[i] = 1e-12 ;
+			std::cout << "errlow" << i << " = 0 , set to 1e-12" << std::endl ;
+			lowerBound[i] = 1e-12 ;
+		}
+
+		if ( upperBound[i] < 1e-100 && (1.0-values[i]) > zeroLimit )
+		{
+			std::cout << "errhigh" << i << " = 0 , set to 1e-12" << std::endl ;
+			upperBound[i] = 1e-12 ;
 		}
 
 		double x = q[i] ;
 		double fitValue = polyaEff(x , params) ;
-		chi2 += (values[i] - fitValue)*(values[i] - fitValue)/(errors[i]*errors[i]) ;
+
+		double error = 0 ;
+		if ( fitValue < values[i] )
+			error = lowerBound[i] ;
+		else
+			error = upperBound[i] ;
+
+		if ( std::abs(fitValue - 1) < zeroLimit )
+			error = lowerBound[i] ;
+
+		chi2 += (values[i] - fitValue)*(values[i] - fitValue)/(error*error) ;
 	}
 
 	chi2 /= (nPoints-1) ;
@@ -143,7 +140,7 @@ void PolyaFitter::minimize()
 	ROOT::Minuit2::Minuit2Minimizer min ;
 	min.SetMaxFunctionCalls(1000000) ;
 	min.SetMaxIterations(100000) ;
-	min.SetTolerance(1e-8) ;
+	min.SetTolerance(1e-4) ;
 	min.SetPrintLevel(0) ;
 	double step = 0.1 ;
 
@@ -156,7 +153,6 @@ void PolyaFitter::minimize()
 
 	if ( min.PrintLevel() > 0)
 		std::cout << "Init Params : " << param[0] << " , " << param[1] << " , "	<< param[2] << std::endl ;
-	//			std::cout << "Init Params : " << param[0] << " , " << param[1] << " , "	<< param[2] << " , " << param[3] << std::endl ;
 
 	while ( minimizerStatus != 0 && nTry < 10 )
 	{

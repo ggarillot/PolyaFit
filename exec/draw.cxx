@@ -5,6 +5,7 @@
 
 #include <TFile.h>
 #include <TTree.h>
+#include <TGraphAsymmErrors.h>
 #include <TGraphErrors.h>
 #include <TF1.h>
 #include <TH1.h>
@@ -48,8 +49,8 @@ int main(int argc , char** argv)
 //	a.openGraphs("/home/garillot/SDHCALMarlinProcessor/analogTest.root") ;
 //	a.openGraphs("/home/garillot/Code/PolyaFit/Data_graphs.root") ;
 //	a.createGraphs(5 , 2) ;
-	TGraphErrors* graphA = a.getGraph(layer,dif,asic) ;
-	TGraphErrors* graphB = b.getGraph(layer,dif,asic) ;
+	TGraphAsymmErrors* graphA = a.getGraph(layer,dif,asic) ;
+	TGraphAsymmErrors* graphB = b.getGraph(layer,dif,asic) ;
 
 	PolyaFitter::PolyaFitResult resA = a.fitGraph(layer,dif,asic) ;
 	resA.print() ;

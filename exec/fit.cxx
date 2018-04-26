@@ -45,7 +45,8 @@ int main(int argc , char** argv)
 
 	GraphManager a ;
 
-	a.ProcessData( std::string("/home/garillot/files/PolyaScan/DATA") ) ;
+//	a.ProcessData( std::string("/home/garillot/files/PolyaScan/DATA") ) ;
+	a.ProcessData( std::string("/home/garillot/files/MultiplicityMap/DATA/thrScan") ) ;
 //	a.ProcessFile( std::string("/home/garillot/files/PolyaScan/MulResults/20_16_0.2.root") ) ;
 
 	a.fitAllGraphs() ;

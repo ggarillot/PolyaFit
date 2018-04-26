@@ -1,6 +1,7 @@
 #ifndef PolyaFitter_h
 #define PolyaFitter_h
 
+#include <TGraphAsymmErrors.h>
 #include <TGraphErrors.h>
 #include <iostream>
 #include <vector>
@@ -14,15 +15,15 @@ class PolyaFitter
 		static double baseFunc(const double* x , const double* params) ;
 		static double polyaEff(double x , const double* params) ;
 
-		void getPoints(TGraphErrors* graph) ;
+		void getPoints(TGraphAsymmErrors* graph) ;
 
 		double functionToMinimize(const double* params) ;
 
 		void minimize() ;
 
-		void setParams(const double* params = NULL) ;
+		void setParams(const double* params = nullptr) ;
 
-		const double* getParams() const { return param ; }
+		std::vector<double> getParams() const { return param ; }
 
 		struct PolyaFitResult
 		{
@@ -54,19 +55,19 @@ class PolyaFitter
 
 		PolyaFitResult getFitResult() const { return fitResult ; }
 
+		static constexpr double zeroLimit = std::numeric_limits<double>::epsilon() ;
 
 	protected :
 
-		unsigned int nPoints ;
-		double* q ;
-		double* values ;
-		double* errors ;
+		unsigned int nPoints = 0 ;
 
+		std::vector<double> q = {} ;
+		std::vector<double> values = {} ;
 		std::vector<double> lowerBound = {} ;
 		std::vector<double> upperBound = {} ;
 
-		unsigned int nParam ;
-		double* param ;
+		unsigned int nParam = 0 ;
+		std::vector<double> param = {} ;
 
 		PolyaFitResult fitResult ;
 

@@ -3,6 +3,8 @@
 
 #include <TFile.h>
 #include <TTree.h>
+
+#include <TGraphAsymmErrors.h>
 #include <TGraphErrors.h>
 
 #include <iostream>
@@ -13,8 +15,8 @@
 class GraphManager
 {
 	public :
-		GraphManager() ;
-		~GraphManager() ;
+		GraphManager() = default ;
+		~GraphManager()  = default ;
 
 		struct AsicID
 		{
@@ -53,24 +55,25 @@ class GraphManager
 		void ProcessFile(std::string fileName) ;
 		void ProcessData(std::string dataPath = "") ;
 
-		TGraphErrors* getGraph(int layer , int dif , int asic) const ;
-		TGraphErrors* getGraph(AsicID id) const ;
-		TGraphErrors* getGlobalGraph() const ;
+		TGraphAsymmErrors* getGraph(int layer , int dif , int asic) const ;
+		TGraphAsymmErrors* getGraph(AsicID id) const ;
+		TGraphAsymmErrors* getGlobalGraph() const ;
 
 		void reset() ;
 
 	protected :
 
-		static void addPoint(TGraphErrors* graph , double x , double y , double ex , double ey) ;
+		static void addPoint(TGraphAsymmErrors* graph , double x , double y , double ey) ;
+		static void addPoint(TGraphAsymmErrors* graph , double x , double y , double eylow , double eyhigh) ;
 
 		void openGraphsInLayer(TDirectoryFile* layerDir) ;
 
 
-		std::map<AsicID,TGraphErrors*> graphMap ;
-		std::map<AsicID,PolyaFitter::PolyaFitResult> resultMap ;
-		std::map<AsicID,double> mulMap ;
-		std::map<AsicID,double> mulErrMap ;
-		std::map<AsicID, std::vector<double> > posMap ;
+		std::map<AsicID,TGraphAsymmErrors*> graphMap = {} ;
+		std::map<AsicID,PolyaFitter::PolyaFitResult> resultMap = {} ;
+		std::map<AsicID,double> mulMap = {} ;
+		std::map<AsicID,double> mulErrMap = {} ;
+		std::map<AsicID, std::vector<double> > posMap = {} ;
 
 } ;
 
