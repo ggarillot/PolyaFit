@@ -36,10 +36,10 @@ int main(int argc , char** argv)
 	GraphManager a ;
 	GraphManager b ;
 
-	a.ProcessData( std::string("/home/garillot/files/PolyaScan/DATA") ) ;
+	a.ProcessData( std::string("/home/garillot/files/MultiplicityMap/DATA/thrScan") ) ;
 
-//	b.ProcessFile( std::string("/home/garillot/SDHCALMarlinProcessor/map_digitMapTestAnalog.root") ) ;
-	b.ProcessFile( std::string("/home/garillot/files/TUNINGTEMP/Eff_cosmicMuons50GeV_Analog.root") ) ;
+	b.ProcessFile( std::string("/home/garillot/SDHCALMarlinProcessor/script/totoLog.root") ) ;
+//	b.ProcessFile( std::string("/home/garillot/files/TUNINGTEMP/Eff_cosmicMuons50GeV_Analog.root") ) ;
 //	a.ProcessFile( std::string("/home/garillot/files/PolyaScan/MulResults/map_7_0.5_0.3.root") ) ;
 
 //	a.openGraphs("Data_graphs.root") ;

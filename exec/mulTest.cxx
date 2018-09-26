@@ -87,13 +87,25 @@ int main(int argc , char** argv)
 		int iEntry = 0 ;
 		while ( tree->GetEntry(iEntry++) )
 		{
-			if ( !(layerID == 25 && difID == 167 && asicID == 25 && padID == -1) ) // because padID > -1 means stats for an individual pad
+			if ( !(layerID == 15 && difID == 127 && asicID == 22 && padID == -1) ) // because padID > -1 means stats for an individual pad
 				continue ;
 
-			std::cout << "thr : " << thresholds.at(0) << "  " << multiplicities->at(0) << "   " << multiplicitiesError->at(0) << std::endl ;
 
-			graph->SetPoint(graph->GetN() , thresholds.at(0) , multiplicities->at(0) ) ;
-			graph->SetPointError(graph->GetN()-1 , 0 , multiplicitiesError->at(0) ) ;
+			for ( unsigned int i = 0 ; i < 3 ; ++i )
+			{
+				if ( i > 0 )
+					continue ;
+				std::cout << "thr : " << thresholds.at(i) << "  " << multiplicities->at(i) << "   " << multiplicitiesError->at(i) << std::endl ;
+				if ( multiplicities->at(i) < std::numeric_limits<double>::epsilon() )
+					continue ;
+				graph->SetPoint(graph->GetN() , thresholds.at(i) , multiplicities->at(i) ) ;
+				graph->SetPointError(graph->GetN()-1 , 0 , multiplicitiesError->at(i) ) ;
+			}
+
+			//			std::cout << "thr : " << thresholds.at(0) << "  " << multiplicities->at(0) << "   " << multiplicitiesError->at(0) << std::endl ;
+
+			//			graph->SetPoint(graph->GetN() , thresholds.at(0) , multiplicities->at(0) ) ;
+			//			graph->SetPointError(graph->GetN()-1 , 0 , multiplicitiesError->at(0) ) ;
 		}
 	}
 
@@ -102,12 +114,22 @@ int main(int argc , char** argv)
 
 	a.setParams() ;
 	a.minimize() ;
-	a.getFitResult().print() ;
+
+	auto res = a.getFitResult() ;
+	res.print() ;
 
 
 	TCanvas* c1 = new TCanvas("c1" , "c1" , 900 , 900) ;
 	c1->cd() ;
+	graph->SetMarkerStyle(20) ;
 	graph->Draw("AP") ;
+
+	TF1* fit = new TF1("fit", MultiplicityFitter::baseFunc , 0 , 30 , 3) ;
+	fit->SetParameters(res.f , res.p , res.c) ;
+	fit->SetNpx(2000) ;
+	fit->SetLineColor(kBlack) ;
+	fit->SetLineStyle(2) ;
+	fit->Draw("same") ;
 
 	c1->SaveAs("test.root") ;
 	/*

@@ -201,7 +201,8 @@ void GraphManager::ProcessData(std::string dataPath)
 	for ( unsigned int i = 0 ; i < 20 ; i++ )
 	{
 		runs.push_back(runstmp[i]) ;
-		thr1Vec.push_back( (dac0tmp[i]-90)/700.0 ) ;
+				thr1Vec.push_back( (dac0tmp[i]-90)/700.0 ) ;
+//		thr1Vec.push_back( (dac0tmp[i]-148)/500.0 ) ;
 		thr2Vec.push_back( (dac1tmp[i]-98)/80.0 ) ;
 		thr3Vec.push_back( (dac2tmp[i]-98)/16.3 ) ;
 	}
@@ -223,7 +224,7 @@ void GraphManager::ProcessData(std::string dataPath)
 		{
 			std::cout << "Error in ProcessData : tree not present in " << filePath.str() << std::endl ;
 			file->Close() ;
-//			return ;
+			//			return ;
 			continue ;
 		}
 
@@ -255,6 +256,12 @@ void GraphManager::ProcessData(std::string dataPath)
 		AsicID globalKey(-1,-1,-1) ;
 		std::vector<double> globalEff(3 , 0.0) ;
 
+		std::vector<double> globalMul(3 , 0.0) ;
+		std::vector<double> globalMulSq(3 , 0.0) ;
+
+		//		double globalMul = 0.0 ;
+		//		double globalMulSq = 0.0 ;
+
 		int nOkAsicsGlobal = 0 ;
 
 
@@ -275,7 +282,7 @@ void GraphManager::ProcessData(std::string dataPath)
 				mulErrMap.insert( std::make_pair( asicKey , multiplicitiesError->at(0) ) ) ;
 
 				posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
-				continue ;
+				//				continue ;
 			}
 
 			if ( asicID == -1 )
@@ -285,11 +292,19 @@ void GraphManager::ProcessData(std::string dataPath)
 
 
 			std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(asicKey) ;
+			std::map<AsicID,TGraphErrors*>::const_iterator itMul = graphMulMap.find(asicKey) ;
 			if ( it == graphMap.end() )
 			{
 				TGraphAsymmErrors* graph = new TGraphAsymmErrors ;
 				graphMap.insert( std::make_pair(asicKey , graph) ) ;
 				it = graphMap.find(asicKey) ;
+			}
+
+			if ( itMul == graphMulMap.end() )
+			{
+				TGraphErrors* graph = new TGraphErrors ;
+				graphMulMap.insert( std::make_pair(asicKey , graph) ) ;
+				itMul = graphMulMap.find(asicKey) ;
 			}
 
 			for ( unsigned int i = 0 ; i < 3 ; ++i )
@@ -301,7 +316,25 @@ void GraphManager::ProcessData(std::string dataPath)
 				addPoint(it->second, thresholds.at(i), efficiencies->at(i) , errLow , errHigh ) ;
 
 				globalEff.at(i) += efficiencies->at(i) ;
+
+				if ( i > 0 )
+					continue ;
+				if ( multiplicities->at(i) < std::numeric_limits<double>::epsilon() )
+					continue ;
+				addPoint(itMul->second, thresholds.at(i), multiplicities->at(i) , multiplicitiesError->at(i) ) ;
+				globalMul.at(i) += multiplicities->at(i) ;
+				globalMulSq.at(i) += multiplicities->at(i)*multiplicities->at(i) ;
+
 			}
+
+			//			if ( !(multiplicities->at(0) < std::numeric_limits<double>::epsilon()) )
+			//			{
+			//				//				continue ;
+			//				addPoint(itMul->second, thresholds.at(0), multiplicities->at(0) , multiplicitiesError->at(0) ) ;
+			//			}
+			//			globalMul += multiplicities->at(0) ;
+			//			globalMulSq += multiplicities->at(0)*multiplicities->at(0) ;
+
 			globalNTrack += nTrack ;
 			nOkAsicsGlobal++ ;
 		}
@@ -317,9 +350,14 @@ void GraphManager::ProcessData(std::string dataPath)
 		graphMap.insert( std::make_pair(globalKey , graph) ) ;
 		std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(globalKey) ;
 
+		TGraphErrors* graphMul = new TGraphErrors ;
+		graphMulMap.insert( std::make_pair(globalKey , graphMul) ) ;
+		std::map<AsicID,TGraphErrors*>::const_iterator itMul = graphMulMap.find(globalKey) ;
+
 		for ( unsigned int i = 0 ; i < 3 ; ++i )
 		{
 			globalEff.at(i) /= nOkAsicsGlobal ;
+
 
 			constexpr double level = 0.683 ;
 
@@ -336,8 +374,33 @@ void GraphManager::ProcessData(std::string dataPath)
 			assert( errLow > 0 && errHigh > 0 ) ;
 
 			addPoint(it->second , thresholds.at(i) , globalEff.at(i) , errLow , errHigh ) ;
+
+
+			if ( i > 0 )
+				continue ;
+			double mulErr = 0.0 ;
+			double var = globalMulSq.at(i)/globalNTrack - (globalMul.at(i)/globalNTrack)*(globalMul.at(i)/globalNTrack) ;
+
+			if ( var < std::numeric_limits<double>::epsilon() )
+				var = 1.0/( std::sqrt(12*globalNTrack) ) ;
+
+			mulErr = sqrt( var/(globalNTrack-1.0) ) ;
+
+			globalMul.at(i) /= nOkAsicsGlobal ;
+			addPoint(itMul->second , thresholds.at(i) , globalMul.at(i) , mulErr ) ;
 		}
 
+
+		//		double mulErr = 0.0 ;
+		//		double var = globalMulSq/globalNTrack - (globalMul/globalNTrack)*(globalMul/globalNTrack) ;
+
+		//		if ( var < std::numeric_limits<double>::epsilon() )
+		//			var = 1.0/( std::sqrt(12*globalNTrack) ) ;
+
+		//		mulErr = sqrt( var/(globalNTrack-1.0) ) ;
+
+		//		globalMul /= nOkAsicsGlobal ;
+		//		addPoint(itMul->second , thresholds.at(0) , globalMul , mulErr ) ;
 	}
 
 }
@@ -406,6 +469,35 @@ std::map<GraphManager::AsicID,PolyaFitter::PolyaFitResult> GraphManager::fitAllG
 	return resultMap ;
 }
 
+
+MultiplicityFitter::MulFitResult GraphManager::fitMulGraph(int layer , int dif , int asic)
+{
+	AsicID id(layer,dif,asic) ;
+	std::map<AsicID,TGraphErrors*>::iterator it = graphMulMap.find( id ) ;
+	if ( it == graphMulMap.end() )
+	{
+		std::cerr << "ERROR : graph not present" << std::endl ;
+		return MultiplicityFitter::MulFitResult() ;
+	}
+
+	std::cout << "Fit graph " ; id.print() ;
+	MultiplicityFitter b ;
+	b.getPoints( it->second ) ;
+	b.setParams() ;
+	b.minimize() ;
+	return b.getFitResult() ;
+}
+
+std::map<GraphManager::AsicID,MultiplicityFitter::MulFitResult> GraphManager::fitAllMulGraphs()
+{
+	resultMulMap.clear() ;
+
+	for ( std::map<AsicID,TGraphErrors*>::iterator it = graphMulMap.begin() ; it != graphMulMap.end() ; ++it )
+		resultMulMap.insert( std::make_pair(it->first , fitMulGraph(it->first.layerID , it->first.difID , it->first.asicID) ) ) ;
+
+	return resultMulMap ;
+}
+
 void GraphManager::writeResultTree(std::string fileName)
 {
 	TFile* file = new TFile(fileName.c_str() , "RECREATE") ;
@@ -420,6 +512,13 @@ void GraphManager::writeResultTree(std::string fileName)
 	double mul , mulError ;
 	double chi2 ;
 	int minimStatus ;
+
+	double factor , factorError ;
+	double power , powerError ;
+	double constant , constantError ;
+	double chi2Mul ;
+	int minimStatusMul ;
+
 	std::vector<double> position ;
 
 	tree->Branch("LayerID" , &layerID) ;
@@ -435,6 +534,16 @@ void GraphManager::writeResultTree(std::string fileName)
 	tree->Branch("eff0Error" , &eff0Error) ;
 	tree->Branch("chi2" , &chi2) ;
 	tree->Branch("minimStatus" , &minimStatus) ;
+
+	tree->Branch("factor" , &factor) ;
+	tree->Branch("factorError" , &factorError) ;
+	tree->Branch("power" , &power) ;
+	tree->Branch("powerError" , &powerError) ;
+	tree->Branch("constant" , &constant) ;
+	tree->Branch("constantError" , &constantError) ;
+	tree->Branch("chi2Mul" , &chi2Mul) ;
+	tree->Branch("minimStatusMul" , &minimStatusMul) ;
+
 	tree->Branch("Position" , &position) ;
 
 	for ( std::map<AsicID,PolyaFitter::PolyaFitResult>::const_iterator it = resultMap.begin() ; it != resultMap.end() ; ++it )
@@ -445,27 +554,13 @@ void GraphManager::writeResultTree(std::string fileName)
 		if ( mulMap.find(id) == mulMap.end() )
 		{
 			continue ;
-			//			layerID = id.layerID ;
-			//			difID = id.difID ;
-			//			asicID = id.asicID ;
+		}
 
-			//			qbar = -1 ;
-			//			qbarError = -1 ;
-			//			delta = -1 ;
-			//			deltaError = -1 ;
-			//			eff0 = 0 ;
-			//			eff0Error = 0 ;
-			//			chi2 = -1 ;
-
-			//			minimStatus = -1 ;
-
-			//			mul = 0 ;
-			//			mulError = 0 ;
-			//			position = posMap[it->first] ;
-
-			//			tree->Fill() ;
-
-			//			continue ;
+		MultiplicityFitter::MulFitResult resMul = resultMulMap.at(id) ;
+		if ( resultMulMap.find(id) == resultMulMap.end() )
+		{
+			std::cout << "WTF" << std::endl ;
+			continue ;
 		}
 
 		layerID = id.layerID ;
@@ -485,6 +580,17 @@ void GraphManager::writeResultTree(std::string fileName)
 		mul = mulMap[it->first] ;
 		mulError = mulErrMap[it->first] ;
 
+		factor = resMul.f ;
+		factorError = resMul.fErr ;
+		power = resMul.p ;
+		powerError = resMul.pErr ;
+		constant = resMul.c ;
+		constantError = resMul.cErr ;
+
+		chi2Mul = resMul.chi2 ;
+		minimStatusMul = resMul.minimStatus ;
+
+
 		position = posMap[it->first] ;
 
 		tree->Fill() ;
@@ -502,6 +608,17 @@ void GraphManager::writeResultTree(double qbar , double delta)
 	writeResultTree( fileName.str() ) ;
 }
 
+void GraphManager::addPoint(TGraphErrors* graph , double x , double y , double ey)
+{
+	if (!graph)
+	{
+		std::cerr << "ERROR in GraphManager::addPoint : graph ptr = NULL" << std::endl ;
+		return ;
+	}
+	int point = graph->GetN() ;
+	graph->SetPoint(point , x , y) ;
+	graph->SetPointError(point , 0 , ey) ;
+}
 
 void GraphManager::addPoint(TGraphAsymmErrors* graph , double x , double y , double ey)
 {
@@ -544,6 +661,26 @@ TGraphAsymmErrors* GraphManager::getGraph(int layer , int dif , int asic) const
 TGraphAsymmErrors* GraphManager::getGlobalGraph() const
 {
 	return getGraph(-1,-1,-1) ;
+}
+
+
+TGraphErrors* GraphManager::getMulGraph(AsicID id) const
+{
+	std::map<AsicID,TGraphErrors*>::const_iterator it = graphMulMap.find( id ) ;
+	if ( it == graphMulMap.end() )
+		return nullptr ;
+	else
+		return it->second ;
+}
+
+TGraphErrors* GraphManager::getMulGraph(int layer , int dif , int asic) const
+{
+	return getMulGraph( AsicID(layer,dif,asic) ) ;
+}
+
+TGraphErrors* GraphManager::getMulGlobalGraph() const
+{
+	return getMulGraph(-1,-1,-1) ;
 }
 
 

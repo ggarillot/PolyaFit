@@ -51,6 +51,9 @@ int main(int argc , char** argv)
 
 	a.fitAllGraphs() ;
 
+//	a.fitMulGraph(0,94,12) ;
+	a.fitAllMulGraphs() ;
+
 //	a.writeResultTree("resSim.root") ;
 	a.writeResultTree("resData.root") ;
 

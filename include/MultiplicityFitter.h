@@ -28,15 +28,17 @@ class MultiplicityFitter
 		struct MulFitResult
 		{
 				MulFitResult()
-					: p(0) , c(0) , chi2(0)  , pErr(0) , cErr(0) , minimStatus(0)
+					: f(0) , p(0) , c(0) , chi2(0) , fErr(0) , pErr(0) , cErr(0) , minimStatus(0)
 				{}
-				MulFitResult(double power , double cons , double c2 , double pE , double cE , int m)
-					: p(power) , c(cons) , chi2(c2) , pErr(pE) , cErr(cE) , minimStatus(m)
+				MulFitResult(double factor , double power , double cons , double c2 , double fE , double pE , double cE , int m)
+					: f(factor) , p(power) , c(cons) , chi2(c2) , fErr(fE) , pErr(pE) , cErr(cE) , minimStatus(m)
 				{}
 
+				double f ;
 				double p ;
 				double c ;
 				double chi2 ;
+				double fErr ;
 				double pErr ;
 				double cErr ;
 
@@ -44,6 +46,7 @@ class MultiplicityFitter
 
 				void print() const
 				{
+					std::cout << "Factor :  " << f << " += " << fErr << std::endl ;
 					std::cout << "Power :  " << p << " += " << pErr << std::endl ;
 					std::cout << "Constante :  " << c << " += " << cErr << std::endl ;
 				}
@@ -59,8 +62,7 @@ class MultiplicityFitter
 
 		std::vector<double> q = {} ;
 		std::vector<double> values = {} ;
-		std::vector<double> lowerBound = {} ;
-		std::vector<double> upperBound = {} ;
+		std::vector<double> errors = {} ;
 
 		unsigned int nParam = 0 ;
 		std::vector<double> param = {} ;

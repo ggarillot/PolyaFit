@@ -11,6 +11,7 @@
 #include <map>
 
 #include "PolyaFitter.h"
+#include "MultiplicityFitter.h"
 
 class GraphManager
 {
@@ -42,12 +43,15 @@ class GraphManager
 
 		void openGraphs(std::string fileName) ;
 
-//		void createGraphsData() ;
+		//		void createGraphsData() ;
 
 		void writeGraphsInFile(std::string fileName) ;
 
 		PolyaFitter::PolyaFitResult fitGraph(int layer , int dif , int asic) ;
 		std::map<AsicID,PolyaFitter::PolyaFitResult> fitAllGraphs() ;
+
+		MultiplicityFitter::MulFitResult fitMulGraph(int layer , int dif , int asic) ;
+		std::map<AsicID,MultiplicityFitter::MulFitResult> fitAllMulGraphs() ;
 
 		void writeResultTree(std::string fileName) ;
 		void writeResultTree(double qbar , double delta) ;
@@ -59,10 +63,15 @@ class GraphManager
 		TGraphAsymmErrors* getGraph(AsicID id) const ;
 		TGraphAsymmErrors* getGlobalGraph() const ;
 
+		TGraphErrors* getMulGraph(int layer , int dif , int asic) const ;
+		TGraphErrors* getMulGraph(AsicID id) const ;
+		TGraphErrors* getMulGlobalGraph() const ;
+
 		void reset() ;
 
 	protected :
 
+		static void addPoint(TGraphErrors* graph , double x , double y , double ey) ;
 		static void addPoint(TGraphAsymmErrors* graph , double x , double y , double ey) ;
 		static void addPoint(TGraphAsymmErrors* graph , double x , double y , double eylow , double eyhigh) ;
 
@@ -71,6 +80,11 @@ class GraphManager
 
 		std::map<AsicID,TGraphAsymmErrors*> graphMap = {} ;
 		std::map<AsicID,PolyaFitter::PolyaFitResult> resultMap = {} ;
+
+		std::map<AsicID,TGraphErrors*> graphMulMap = {} ;
+		std::map<AsicID,MultiplicityFitter::MulFitResult> resultMulMap = {} ;
+
+
 		std::map<AsicID,double> mulMap = {} ;
 		std::map<AsicID,double> mulErrMap = {} ;
 		std::map<AsicID, std::vector<double> > posMap = {} ;
