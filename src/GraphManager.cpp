@@ -194,14 +194,8 @@ void GraphManager::ProcessData(std::string jsonFileName)
 	auto list = json.at("runs") ;
 	for ( const auto& i : list )
 	{
-		auto files = i.at("files") ;
-		for ( const auto& file : files )
-		{
-			fileList.push_back( file ) ;
-			thrList.push_back( i.at("thresholds") ) ;
-		}
-//		fileList.push_back( i.at("file") ) ;
-//		thrList.push_back( i.at("thresholds") ) ;
+		fileList.push_back( i.at("file") ) ;
+		thrList.push_back( i.at("thresholds") ) ;
 		if ( i.count("mulRef") )
 		{
 			if ( mulRef != std::numeric_limits<unsigned int>::max() )

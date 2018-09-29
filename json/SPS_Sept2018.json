@@ -1,0 +1,14 @@
+{
+	"directory" : "/home/garillot/files/MultiplicityMap/DATA/SPS_Sept2018",
+
+	"runs" : 
+	[
+		{ "file" : "Eff_440-498-489.root" , "thresholds" : [440,498,489] } ,
+		{ "file" : "Eff_743825.root"      , "thresholds" : [420,431,445] } ,
+		{ "file" : "Eff_743826.root"      , "thresholds" : [400,376,405] } ,
+		{ "file" : "Eff_380-330-371.root" , "thresholds" : [380,330,371] } ,
+		{ "file" : "Eff_743830.root"      , "thresholds" : [360,292,340] } ,
+		{ "file" : "Eff_340-260-313.root" , "thresholds" : [340,260,313] } ,
+		{ "file" : "Eff_320-233-288.root" , "thresholds" : [320,233,288] }
+	]
+}

@@ -1,0 +1,27 @@
+{
+	"directory" : "/home/garillot/files/MultiplicityMap/DATA/thrScan",
+
+	"runs" : 
+	[
+		{ "file" : "Eff_730630.root" , "thresholds" : [188,130,168] },
+		{ "file" : "Eff_730627.root" , "thresholds" : [199,147,185] },
+		{ "file" : "Eff_730626.root" , "thresholds" : [210,164,202] },
+		{ "file" : "Eff_730625.root" , "thresholds" : [221,181,220] },
+		{ "file" : "Eff_730619.root" , "thresholds" : [232,197,237] },
+		{ "file" : "Eff_730618.root" , "thresholds" : [243,214,254] },
+		{ "file" : "Eff_730617.root" , "thresholds" : [254,231,271] },
+		{ "file" : "Eff_730616.root" , "thresholds" : [265,248,288] },
+		{ "file" : "Eff_730615.root" , "thresholds" : [276,265,305] },
+		{ "file" : "Eff_730611.root" , "thresholds" : [287,282,323] },
+		{ "file" : "Eff_730609.root" , "thresholds" : [299,298,340] },
+		{ "file" : "Eff_730607.root" , "thresholds" : [310,315,357] },
+		{ "file" : "Eff_730569.root" , "thresholds" : [321,332,374] },
+		{ "file" : "Eff_730568.root" , "thresholds" : [332,349,391] },
+		{ "file" : "Eff_730567.root" , "thresholds" : [343,366,408] },
+		{ "file" : "Eff_730566.root" , "thresholds" : [354,383,425] },
+		{ "file" : "Eff_730631.root" , "thresholds" : [365,399,443] },
+		{ "file" : "Eff_730633.root" , "thresholds" : [376,416,460] },
+		{ "file" : "Eff_730545.root" , "thresholds" : [387,433,477] },
+		{ "file" : "Eff_730677.root" , "thresholds" : [170,498,342] , "mulRef" : true }
+	]
+}
