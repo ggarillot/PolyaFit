@@ -10,6 +10,8 @@
 #include <iostream>
 #include <map>
 
+#include "json.hpp"
+
 #include "PolyaFitter.h"
 #include "MultiplicityFitter.h"
 
@@ -57,7 +59,7 @@ class GraphManager
 		void writeResultTree(double qbar , double delta) ;
 
 		void ProcessFile(std::string fileName) ;
-		void ProcessData(std::string dataPath = "") ;
+		void ProcessData(std::string jsonFileName) ;
 
 		TGraphAsymmErrors* getGraph(int layer , int dif , int asic) const ;
 		TGraphAsymmErrors* getGraph(AsicID id) const ;

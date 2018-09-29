@@ -3,6 +3,7 @@
 #include "PolyaFitter.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <cstdlib>
 #include <sstream>
@@ -16,11 +17,6 @@
 
 void GraphManager::reset()
 {
-	//	for ( std::map<AsicID,TGraphErrors*>::const_iterator it = graphMap.begin() ; it != graphMap.end() ; ++it )
-	//	{
-	//		if ( it->second )
-	//			delete it->second ;
-	//	}
 	graphMap.clear() ;
 	resultMap.clear() ;
 }
@@ -158,14 +154,15 @@ void GraphManager::ProcessFile(std::string fileName)
 
 		AsicID asicKey(layerID , difID , asicID) ;
 
-		//		if ( eff1 < 0.7 )
 		if ( (*std::max_element(efficiencies->begin() , efficiencies->end() )) < 0.1 )
 			continue ;
 
+		posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
+
 		TGraphAsymmErrors* graph = nullptr ;
 
-		std::vector<double> low( efficiencies->size() , 0) ;
-		std::vector<double> high( efficiencies->size() , 0) ;
+		std::vector<double> low( efficiencies->size() , 0 ) ;
+		std::vector<double> high( efficiencies->size() , 0 ) ;
 
 		for ( unsigned int i = 0 ; i < efficiencies->size() ; ++i )
 		{
@@ -178,53 +175,59 @@ void GraphManager::ProcessFile(std::string fileName)
 
 		mulMap.insert( std::make_pair(asicKey , multiplicities->at(0)) ) ;
 		mulErrMap.insert( std::make_pair(asicKey , multiplicitiesError->at(0)) ) ;
-		posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
 	}
 
 	file->Close() ;
 }
 
-void GraphManager::ProcessData(std::string dataPath)
+void GraphManager::ProcessData(std::string jsonFileName)
 {
-	int runstmp[] = { 730630, 730627, 730626, 730625, 730619, 730618,
-					  730617, 730616, 730615, 730611, 730609, 730607,
-					  730569, 730568, 730567, 730566, 730631, 730633, 730545, 730677 } ;
-	int dac0tmp[] = { 188,199,210,221,232,243,254,265,276,287,299,310,321,332,343,354,365,376,387,170 } ;
-	int dac1tmp[] = { 130,147,164,181,197,214,231,248,265,282,298,315,332,349,366,383,399,416,433,498 } ;
-	int dac2tmp[] = { 168,185,202,220,237,254,271,288,305,323,340,357,374,391,408,425,443,460,477,342 } ;
+	std::ifstream jsonFile(jsonFileName) ;
+	auto json = nlohmann::json::parse(jsonFile) ;
 
-	std::vector<int> runs ;
-	std::vector<double> thr1Vec ;
-	std::vector<double> thr2Vec ;
-	std::vector<double> thr3Vec ;
+	std::string directory = json.at("directory") ;
 
-	for ( unsigned int i = 0 ; i < 20 ; i++ )
+	std::vector<std::string> fileList = {} ;
+	std::vector<std::array<int,3>> thrList = {} ;
+	unsigned int mulRef = std::numeric_limits<unsigned int>::max() ;
+
+	auto list = json.at("runs") ;
+	for ( const auto& i : list )
 	{
-		runs.push_back(runstmp[i]) ;
-				thr1Vec.push_back( (dac0tmp[i]-90)/700.0 ) ;
-//		thr1Vec.push_back( (dac0tmp[i]-148)/500.0 ) ;
-		thr2Vec.push_back( (dac1tmp[i]-98)/80.0 ) ;
-		thr3Vec.push_back( (dac2tmp[i]-98)/16.3 ) ;
+		auto files = i.at("files") ;
+		for ( const auto& file : files )
+		{
+			fileList.push_back( file ) ;
+			thrList.push_back( i.at("thresholds") ) ;
+		}
+//		fileList.push_back( i.at("file") ) ;
+//		thrList.push_back( i.at("thresholds") ) ;
+		if ( i.count("mulRef") )
+		{
+			if ( mulRef != std::numeric_limits<unsigned int>::max() )
+				std::cout << "WARNING : multiple mulRef defined" << std::endl ;
+			mulRef = static_cast<unsigned int>( fileList.size()-1 ) ;
+		}
 	}
 
-	for ( unsigned int iRun = 0 ; iRun < runs.size() ; ++iRun )
+	assert( fileList.size() == thrList.size() ) ;
+
+	for ( unsigned int i = 0 ; i < fileList.size() ; i++ )
 	{
 		std::vector<double> thresholds ;
-		thresholds.push_back( thr1Vec.at(iRun) ) ;
-		thresholds.push_back( thr2Vec.at(iRun) ) ;
-		thresholds.push_back( thr3Vec.at(iRun) ) ;
+		thresholds.push_back( (thrList.at(i)[0]-90)/700.0 ) ;
+		thresholds.push_back( (thrList.at(i)[1]-98)/80.0 ) ;
+		thresholds.push_back( (thrList.at(i)[2]-98)/16.3 ) ;
 
-		std::stringstream filePath ;
-		filePath << dataPath << "/Eff_" << runs.at(iRun) << ".root" ;
-
-		std::cout << "Process " << filePath.str() << std::endl ;
-		TFile* file = new TFile( filePath.str().c_str() , "READ") ;
+		std::stringstream fileName ;
+		fileName << directory << "/" << fileList.at(i) ;
+		std::cout << "Process " << fileName.str() << std::endl ;
+		TFile* file = new TFile( fileName.str().c_str() , "READ") ;
 		TTree* tree = dynamic_cast<TTree*>( file->Get("tree") ) ;
 		if ( !tree )
 		{
-			std::cout << "Error in ProcessData : tree not present in " << filePath.str() << std::endl ;
+			std::cout << "Error in ProcessData : tree not present in " << fileName.str() << std::endl ;
 			file->Close() ;
-			//			return ;
 			continue ;
 		}
 
@@ -276,20 +279,13 @@ void GraphManager::ProcessData(std::string dataPath)
 			if ( (*std::max_element(efficiencies->begin() , efficiencies->end() )) < 0.1 )
 				continue ;
 
-			if ( runs.at(iRun) == 730677 )
+			posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
+
+			if ( i == mulRef )
 			{
 				mulMap.insert( std::make_pair( asicKey , multiplicities->at(0) ) ) ;
 				mulErrMap.insert( std::make_pair( asicKey , multiplicitiesError->at(0) ) ) ;
-
-				posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
-				//				continue ;
 			}
-
-			if ( asicID == -1 )
-				continue ;
-			if ( layerID == 1 || layerID == 34 ) //Dead layers
-				continue ;
-
 
 			std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(asicKey) ;
 			std::map<AsicID,TGraphErrors*>::const_iterator itMul = graphMulMap.find(asicKey) ;
@@ -307,23 +303,23 @@ void GraphManager::ProcessData(std::string dataPath)
 				itMul = graphMulMap.find(asicKey) ;
 			}
 
-			for ( unsigned int i = 0 ; i < 3 ; ++i )
+			for ( unsigned int j = 0 ; j < 3 ; ++j )
 			{
-				auto errLow = efficiencies->at(i) - efficienciesLowerBound->at(i) ;
-				auto errHigh = efficienciesUpperBound->at(i) - efficiencies->at(i) ;
+				auto errLow = efficiencies->at(j) - efficienciesLowerBound->at(j) ;
+				auto errHigh = efficienciesUpperBound->at(j) - efficiencies->at(j) ;
 
 				assert( errLow >= 0 && errHigh >= 0 ) ;
-				addPoint(it->second, thresholds.at(i), efficiencies->at(i) , errLow , errHigh ) ;
+				addPoint(it->second, thresholds.at(j), efficiencies->at(j) , errLow , errHigh ) ;
 
-				globalEff.at(i) += efficiencies->at(i) ;
+				globalEff.at(j) += efficiencies->at(j) ;
 
-				if ( i > 0 )
+				if ( j > 0 )
 					continue ;
-				if ( multiplicities->at(i) < std::numeric_limits<double>::epsilon() )
+				if ( multiplicities->at(j) < std::numeric_limits<double>::epsilon() )
 					continue ;
-				addPoint(itMul->second, thresholds.at(i), multiplicities->at(i) , multiplicitiesError->at(i) ) ;
-				globalMul.at(i) += multiplicities->at(i) ;
-				globalMulSq.at(i) += multiplicities->at(i)*multiplicities->at(i) ;
+				addPoint(itMul->second, thresholds.at(j), multiplicities->at(j) , multiplicitiesError->at(j) ) ;
+				globalMul.at(j) += multiplicities->at(j) ;
+				globalMulSq.at(j) += multiplicities->at(j)*multiplicities->at(j) ;
 
 			}
 
@@ -341,54 +337,54 @@ void GraphManager::ProcessData(std::string dataPath)
 
 		file->Close() ;
 
-		if ( runs.at(iRun) == 730677 )
-			continue ;
+		//		if ( runs.at(iRun) == 730677 )
+		//			continue ;
 
 
 
-		TGraphAsymmErrors* graph = new TGraphAsymmErrors ;
-		graphMap.insert( std::make_pair(globalKey , graph) ) ;
-		std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(globalKey) ;
+//		TGraphAsymmErrors* graph = new TGraphAsymmErrors ;
+//		graphMap.insert( std::make_pair(globalKey , graph) ) ;
+//		std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(globalKey) ;
 
-		TGraphErrors* graphMul = new TGraphErrors ;
-		graphMulMap.insert( std::make_pair(globalKey , graphMul) ) ;
-		std::map<AsicID,TGraphErrors*>::const_iterator itMul = graphMulMap.find(globalKey) ;
+//		TGraphErrors* graphMul = new TGraphErrors ;
+//		graphMulMap.insert( std::make_pair(globalKey , graphMul) ) ;
+//		std::map<AsicID,TGraphErrors*>::const_iterator itMul = graphMulMap.find(globalKey) ;
 
-		for ( unsigned int i = 0 ; i < 3 ; ++i )
-		{
-			globalEff.at(i) /= nOkAsicsGlobal ;
-
-
-			constexpr double level = 0.683 ;
-
-			double a = globalEff.at(i)*globalNTrack + 1 ;
-			double b = globalNTrack - globalEff.at(i)*globalNTrack + 1 ;
-
-			double lowerBound = 0 ;
-			double upperBound = 0 ;
-			TEfficiency::BetaShortestInterval( level , a , b , lowerBound , upperBound ) ;
-
-			auto errLow = globalEff.at(i) - lowerBound ;
-			auto errHigh = upperBound - globalEff.at(i) ;
-
-			assert( errLow > 0 && errHigh > 0 ) ;
-
-			addPoint(it->second , thresholds.at(i) , globalEff.at(i) , errLow , errHigh ) ;
+//		for ( unsigned int j = 0 ; j < 3 ; ++j )
+//		{
+//			globalEff.at(j) /= nOkAsicsGlobal ;
 
 
-			if ( i > 0 )
-				continue ;
-			double mulErr = 0.0 ;
-			double var = globalMulSq.at(i)/globalNTrack - (globalMul.at(i)/globalNTrack)*(globalMul.at(i)/globalNTrack) ;
+//			constexpr double level = 0.683 ;
 
-			if ( var < std::numeric_limits<double>::epsilon() )
-				var = 1.0/( std::sqrt(12*globalNTrack) ) ;
+//			double a = globalEff.at(j)*globalNTrack + 1 ;
+//			double b = globalNTrack - globalEff.at(j)*globalNTrack + 1 ;
 
-			mulErr = sqrt( var/(globalNTrack-1.0) ) ;
+//			double lowerBound = 0 ;
+//			double upperBound = 0 ;
+//			TEfficiency::BetaShortestInterval( level , a , b , lowerBound , upperBound ) ;
 
-			globalMul.at(i) /= nOkAsicsGlobal ;
-			addPoint(itMul->second , thresholds.at(i) , globalMul.at(i) , mulErr ) ;
-		}
+//			auto errLow = globalEff.at(j) - lowerBound ;
+//			auto errHigh = upperBound - globalEff.at(j) ;
+
+//			assert( errLow > 0 && errHigh > 0 ) ;
+
+//			addPoint(it->second , thresholds.at(j) , globalEff.at(j) , errLow , errHigh ) ;
+
+
+//			if ( j > 0 )
+//				continue ;
+//			double mulErr = 0.0 ;
+//			double var = globalMulSq.at(j)/globalNTrack - (globalMul.at(j)/globalNTrack)*(globalMul.at(j)/globalNTrack) ;
+
+//			if ( var < std::numeric_limits<double>::epsilon() )
+//				var = 1.0/( std::sqrt(12*globalNTrack) ) ;
+
+//			mulErr = sqrt( var/(globalNTrack-1.0) ) ;
+
+//			globalMul.at(j) /= nOkAsicsGlobal ;
+//			addPoint(itMul->second , thresholds.at(j) , globalMul.at(j) , mulErr ) ;
+//		}
 
 
 		//		double mulErr = 0.0 ;
@@ -551,10 +547,8 @@ void GraphManager::writeResultTree(std::string fileName)
 		AsicID id = it->first ;
 		PolyaFitter::PolyaFitResult res = it->second ;
 
-		if ( mulMap.find(id) == mulMap.end() )
-		{
+		if ( posMap.find(id) == posMap.end() )
 			continue ;
-		}
 
 		MultiplicityFitter::MulFitResult resMul = resultMulMap.at(id) ;
 		if ( resultMulMap.find(id) == resultMulMap.end() )

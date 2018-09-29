@@ -87,7 +87,7 @@ int main(int argc , char** argv)
 		int iEntry = 0 ;
 		while ( tree->GetEntry(iEntry++) )
 		{
-			if ( !(layerID == 15 && difID == 127 && asicID == 22 && padID == -1) ) // because padID > -1 means stats for an individual pad
+			if ( !(layerID == 47 && difID == 1 && asicID == 48 && padID == -1) ) // because padID > -1 means stats for an individual pad
 				continue ;
 
 
