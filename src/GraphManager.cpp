@@ -160,6 +160,7 @@ void GraphManager::ProcessFile(std::string fileName)
 		posMap.insert( std::make_pair( asicKey , std::vector<double>(*position) ) ) ;
 
 		TGraphAsymmErrors* graph = nullptr ;
+		TGraphErrors* mulGraph = nullptr ;
 
 		std::vector<double> low( efficiencies->size() , 0 ) ;
 		std::vector<double> high( efficiencies->size() , 0 ) ;
@@ -171,7 +172,12 @@ void GraphManager::ProcessFile(std::string fileName)
 		}
 		graph = new TGraphAsymmErrors( static_cast<int>( thresholds->size() ) , &(*thresholds)[0] , &(*efficiencies)[0] , nullptr , nullptr , &(low)[0] , &(high)[0] ) ;
 		graph->SetMarkerStyle(20) ;
+
+		mulGraph = new TGraphErrors( static_cast<int>( thresholds->size() ) , &(*thresholds)[0] , &(*multiplicities)[0] , nullptr , &(*multiplicitiesError)[0] ) ;
+		mulGraph->SetMarkerStyle(20) ;
+
 		graphMap.insert( std::make_pair(asicKey , graph) ) ;
+		graphMulMap.insert( std::make_pair(asicKey , mulGraph) ) ;
 
 		mulMap.insert( std::make_pair(asicKey , multiplicities->at(0)) ) ;
 		mulErrMap.insert( std::make_pair(asicKey , multiplicitiesError->at(0)) ) ;
@@ -317,80 +323,11 @@ void GraphManager::ProcessData(std::string jsonFileName)
 
 			}
 
-			//			if ( !(multiplicities->at(0) < std::numeric_limits<double>::epsilon()) )
-			//			{
-			//				//				continue ;
-			//				addPoint(itMul->second, thresholds.at(0), multiplicities->at(0) , multiplicitiesError->at(0) ) ;
-			//			}
-			//			globalMul += multiplicities->at(0) ;
-			//			globalMulSq += multiplicities->at(0)*multiplicities->at(0) ;
-
 			globalNTrack += nTrack ;
 			nOkAsicsGlobal++ ;
 		}
 
 		file->Close() ;
-
-		//		if ( runs.at(iRun) == 730677 )
-		//			continue ;
-
-
-
-//		TGraphAsymmErrors* graph = new TGraphAsymmErrors ;
-//		graphMap.insert( std::make_pair(globalKey , graph) ) ;
-//		std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(globalKey) ;
-
-//		TGraphErrors* graphMul = new TGraphErrors ;
-//		graphMulMap.insert( std::make_pair(globalKey , graphMul) ) ;
-//		std::map<AsicID,TGraphErrors*>::const_iterator itMul = graphMulMap.find(globalKey) ;
-
-//		for ( unsigned int j = 0 ; j < 3 ; ++j )
-//		{
-//			globalEff.at(j) /= nOkAsicsGlobal ;
-
-
-//			constexpr double level = 0.683 ;
-
-//			double a = globalEff.at(j)*globalNTrack + 1 ;
-//			double b = globalNTrack - globalEff.at(j)*globalNTrack + 1 ;
-
-//			double lowerBound = 0 ;
-//			double upperBound = 0 ;
-//			TEfficiency::BetaShortestInterval( level , a , b , lowerBound , upperBound ) ;
-
-//			auto errLow = globalEff.at(j) - lowerBound ;
-//			auto errHigh = upperBound - globalEff.at(j) ;
-
-//			assert( errLow > 0 && errHigh > 0 ) ;
-
-//			addPoint(it->second , thresholds.at(j) , globalEff.at(j) , errLow , errHigh ) ;
-
-
-//			if ( j > 0 )
-//				continue ;
-//			double mulErr = 0.0 ;
-//			double var = globalMulSq.at(j)/globalNTrack - (globalMul.at(j)/globalNTrack)*(globalMul.at(j)/globalNTrack) ;
-
-//			if ( var < std::numeric_limits<double>::epsilon() )
-//				var = 1.0/( std::sqrt(12*globalNTrack) ) ;
-
-//			mulErr = sqrt( var/(globalNTrack-1.0) ) ;
-
-//			globalMul.at(j) /= nOkAsicsGlobal ;
-//			addPoint(itMul->second , thresholds.at(j) , globalMul.at(j) , mulErr ) ;
-//		}
-
-
-		//		double mulErr = 0.0 ;
-		//		double var = globalMulSq/globalNTrack - (globalMul/globalNTrack)*(globalMul/globalNTrack) ;
-
-		//		if ( var < std::numeric_limits<double>::epsilon() )
-		//			var = 1.0/( std::sqrt(12*globalNTrack) ) ;
-
-		//		mulErr = sqrt( var/(globalNTrack-1.0) ) ;
-
-		//		globalMul /= nOkAsicsGlobal ;
-		//		addPoint(itMul->second , thresholds.at(0) , globalMul , mulErr ) ;
 	}
 
 }
@@ -470,7 +407,7 @@ MultiplicityFitter::MulFitResult GraphManager::fitMulGraph(int layer , int dif ,
 		return MultiplicityFitter::MulFitResult() ;
 	}
 
-	std::cout << "Fit graph " ; id.print() ;
+	std::cout << "Fit mul graph " ; id.print() ;
 	MultiplicityFitter b ;
 	b.getPoints( it->second ) ;
 	b.setParams() ;
@@ -480,6 +417,7 @@ MultiplicityFitter::MulFitResult GraphManager::fitMulGraph(int layer , int dif ,
 
 std::map<GraphManager::AsicID,MultiplicityFitter::MulFitResult> GraphManager::fitAllMulGraphs()
 {
+	std::cout << "Fit all mul graphs" << std::endl ;
 	resultMulMap.clear() ;
 
 	for ( std::map<AsicID,TGraphErrors*>::iterator it = graphMulMap.begin() ; it != graphMulMap.end() ; ++it )

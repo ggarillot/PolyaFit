@@ -37,7 +37,9 @@ int main(int argc , char** argv)
 	a.ProcessFile( inputFile ) ;
 
 	a.fitAllGraphs() ;
+	a.fitAllMulGraphs() ;
 
+	std::cout << "write tree" << std::endl ;
 //	std::stringstream outFilePath ; outFilePath << "/home/garillot/files/PolyaScan/Fits/Fits_" << qbar << "_" << delta << "_" << d << ".root" ;
 //	a.writeResultTree( outFilePath.str() ) ;
 	a.writeResultTree( outputFile ) ;
