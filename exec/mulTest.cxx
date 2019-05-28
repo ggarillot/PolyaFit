@@ -110,9 +110,8 @@ int main(int argc , char** argv)
 	}
 
 	MultiplicityFitter a ;
-	a.getPoints(graph) ;
+	a.getPointsFromGraph(graph) ;
 
-	a.setParams() ;
 	a.minimize() ;
 
 	auto res = a.getFitResult() ;
@@ -124,7 +123,7 @@ int main(int argc , char** argv)
 	graph->SetMarkerStyle(20) ;
 	graph->Draw("AP") ;
 
-	TF1* fit = new TF1("fit", MultiplicityFitter::baseFunc , 0 , 30 , 3) ;
+	TF1* fit = new TF1("fit", MultiplicityFitter::multiplicityVsThr , 0 , 30 , 3) ;
 	fit->SetParameters(res.f , res.p , res.c) ;
 	fit->SetNpx(2000) ;
 	fit->SetLineColor(kBlack) ;

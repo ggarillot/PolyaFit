@@ -19,7 +19,7 @@ class GraphManager
 {
 	public :
 		GraphManager() = default ;
-		~GraphManager()  = default ;
+		~GraphManager() = default ;
 
 		struct AsicID
 		{
@@ -32,13 +32,13 @@ class GraphManager
 				bool operator==(const AsicID& b) const ;
 				void print() const
 				{
-					std::cout << "Layer " << layerID << " , Dif " << difID << " , Asic " << asicID << std::endl ;
+					std::cout << "Layer " << layerID << " , DIF " << difID << " , ASIC " << asicID << std::endl ;
 				}
 
 		} ;
 		friend std::ostream& operator<<(std::ostream& os , const AsicID& asicID)
 		{
-			os << "Layer " << asicID.layerID << " , Dif " << asicID.difID << " , Asic " << asicID.asicID ;
+			os << "Layer " << asicID.layerID << " , DIF " << asicID.difID << " , ASIC " << asicID.asicID ;
 			return os ;
 		}
 
@@ -49,11 +49,13 @@ class GraphManager
 
 		void writeGraphsInFile(std::string fileName) ;
 
-		PolyaFitter::PolyaFitResult fitGraph(int layer , int dif , int asic) ;
-		std::map<AsicID,PolyaFitter::PolyaFitResult> fitAllGraphs() ;
+		PolyaFitResult fitGraph(int layer , int dif , int asic) const ;
+		PolyaFitResult fitGraph(AsicID id) const ;
+		std::map<AsicID,PolyaFitResult> fitAllGraphs() ;
 
-		MultiplicityFitter::MulFitResult fitMulGraph(int layer , int dif , int asic) ;
-		std::map<AsicID,MultiplicityFitter::MulFitResult> fitAllMulGraphs() ;
+		MultiplicityFitResult fitMulGraph(int layer , int dif , int asic) const ;
+		MultiplicityFitResult fitMulGraph(AsicID id) const ;
+		std::map<AsicID,MultiplicityFitResult> fitAllMulGraphs() ;
 
 		void writeResultTree(std::string fileName) ;
 		void writeResultTree(double qbar , double delta) ;
@@ -81,10 +83,10 @@ class GraphManager
 
 
 		std::map<AsicID,TGraphAsymmErrors*> graphMap = {} ;
-		std::map<AsicID,PolyaFitter::PolyaFitResult> resultMap = {} ;
+		std::map<AsicID,PolyaFitResult> resultMap = {} ;
 
 		std::map<AsicID,TGraphErrors*> graphMulMap = {} ;
-		std::map<AsicID,MultiplicityFitter::MulFitResult> resultMulMap = {} ;
+		std::map<AsicID,MultiplicityFitResult> resultMulMap = {} ;
 
 
 		std::map<AsicID,double> mulMap = {} ;

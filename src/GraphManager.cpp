@@ -23,17 +23,12 @@ void GraphManager::reset()
 
 bool GraphManager::AsicID::operator<(const AsicID& b) const
 {
-	if ( this->layerID != b.layerID )
-		return this->layerID < b.layerID ;
-	else if ( this->difID != b.difID )
-		return this->difID < b.difID ;
-	else
-		return this->asicID < b.asicID ;
+	return std::tie(this->layerID , this->difID , this->asicID) < std::tie(b.layerID , b.difID , b.asicID) ;
 }
 
 bool GraphManager::AsicID::operator==(const AsicID& b) const
 {
-	return ( this->layerID == b.layerID ) && ( this->difID == b.difID ) && ( this->asicID == b.asicID ) ;
+	return std::tie(this->layerID , this->difID , this->asicID) == std::tie(b.layerID , b.difID , b.asicID) ;
 }
 
 
@@ -219,6 +214,7 @@ void GraphManager::ProcessData(std::string jsonFileName)
 		thresholds.push_back( (thrList.at(i)[1]-98)/80.0 ) ;
 		thresholds.push_back( (thrList.at(i)[2]-98)/16.3 ) ;
 
+
 		std::stringstream fileName ;
 		fileName << directory << "/" << fileList.at(i) ;
 		std::cout << "Process " << fileName.str() << std::endl ;
@@ -287,6 +283,7 @@ void GraphManager::ProcessData(std::string jsonFileName)
 				mulErrMap.insert( std::make_pair( asicKey , multiplicitiesError->at(0) ) ) ;
 			}
 
+
 			std::map<AsicID,TGraphAsymmErrors*>::const_iterator it = graphMap.find(asicKey) ;
 			std::map<AsicID,TGraphErrors*>::const_iterator itMul = graphMulMap.find(asicKey) ;
 			if ( it == graphMap.end() )
@@ -303,7 +300,11 @@ void GraphManager::ProcessData(std::string jsonFileName)
 				itMul = graphMulMap.find(asicKey) ;
 			}
 
-			for ( unsigned int j = 0 ; j < 3 ; ++j )
+			unsigned int c = 0 ;
+			if ( i != mulRef && layerID == 47 )
+				c = 1 ;
+
+			for ( unsigned int j = c ; j < 3 ; ++j )
 			{
 				auto errLow = efficiencies->at(j) - efficienciesLowerBound->at(j) ;
 				auto errHigh = efficienciesUpperBound->at(j) - efficiencies->at(j) ;
@@ -367,26 +368,33 @@ void GraphManager::writeGraphsInFile(std::string fileName)
 	file->Close() ;
 }
 
-
-PolyaFitter::PolyaFitResult GraphManager::fitGraph(int layer , int dif , int asic)
+PolyaFitResult GraphManager::fitGraph(AsicID id) const
 {
-	AsicID id(layer,dif,asic) ;
-	std::map<AsicID,TGraphAsymmErrors*>::iterator it = graphMap.find( id ) ;
+	auto it = graphMap.find( id ) ;
 	if ( it == graphMap.end() )
 	{
 		std::cerr << "ERROR : graph not present" << std::endl ;
-		return PolyaFitter::PolyaFitResult() ;
+		return PolyaFitResult() ;
 	}
 
 	std::cout << "Fit graph " ; id.print() ;
 	PolyaFitter b ;
-	b.getPoints( it->second ) ;
-	b.setParams() ;
+	b.getPointsFromGraph( it->second ) ;
+
+	auto eff0 = b.getValues()[0] ;
+	if ( eff0 < 0.5 )
+		b.setParam(1,0.0) ;
+	b.setParam(2 , eff0) ;
+
 	b.minimize() ;
 	return b.getFitResult() ;
 }
+PolyaFitResult GraphManager::fitGraph(int layer , int dif , int asic) const
+{
+	return fitGraph( AsicID(layer,dif,asic)) ;
+}
 
-std::map<GraphManager::AsicID,PolyaFitter::PolyaFitResult> GraphManager::fitAllGraphs()
+std::map<GraphManager::AsicID,PolyaFitResult> GraphManager::fitAllGraphs()
 {
 	resultMap.clear() ;
 
@@ -397,25 +405,27 @@ std::map<GraphManager::AsicID,PolyaFitter::PolyaFitResult> GraphManager::fitAllG
 }
 
 
-MultiplicityFitter::MulFitResult GraphManager::fitMulGraph(int layer , int dif , int asic)
+MultiplicityFitResult GraphManager::fitMulGraph(AsicID id) const
 {
-	AsicID id(layer,dif,asic) ;
-	std::map<AsicID,TGraphErrors*>::iterator it = graphMulMap.find( id ) ;
+	auto it = graphMulMap.find( id ) ;
 	if ( it == graphMulMap.end() )
 	{
 		std::cerr << "ERROR : graph not present" << std::endl ;
-		return MultiplicityFitter::MulFitResult() ;
+		return MultiplicityFitResult() ;
 	}
 
 	std::cout << "Fit mul graph " ; id.print() ;
 	MultiplicityFitter b ;
-	b.getPoints( it->second ) ;
-	b.setParams() ;
+	b.getPointsFromGraph( it->second ) ;
 	b.minimize() ;
 	return b.getFitResult() ;
 }
+MultiplicityFitResult GraphManager::fitMulGraph(int layer , int dif , int asic) const
+{
+	return fitMulGraph( AsicID(layer,dif,asic)) ;
+}
 
-std::map<GraphManager::AsicID,MultiplicityFitter::MulFitResult> GraphManager::fitAllMulGraphs()
+std::map<GraphManager::AsicID,MultiplicityFitResult> GraphManager::fitAllMulGraphs()
 {
 	std::cout << "Fit all mul graphs" << std::endl ;
 	resultMulMap.clear() ;
@@ -474,15 +484,15 @@ void GraphManager::writeResultTree(std::string fileName)
 
 	tree->Branch("Position" , &position) ;
 
-	for ( std::map<AsicID,PolyaFitter::PolyaFitResult>::const_iterator it = resultMap.begin() ; it != resultMap.end() ; ++it )
+	for ( std::map<AsicID,PolyaFitResult>::const_iterator it = resultMap.begin() ; it != resultMap.end() ; ++it )
 	{
 		AsicID id = it->first ;
-		PolyaFitter::PolyaFitResult res = it->second ;
+		PolyaFitResult res = it->second ;
 
 		if ( posMap.find(id) == posMap.end() )
 			continue ;
 
-		MultiplicityFitter::MulFitResult resMul = resultMulMap.at(id) ;
+		MultiplicityFitResult resMul = resultMulMap.at(id) ;
 		if ( resultMulMap.find(id) == resultMulMap.end() )
 		{
 			std::cout << "WTF" << std::endl ;

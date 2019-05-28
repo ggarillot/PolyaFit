@@ -1,6 +1,7 @@
 {
-	"directory" : "/home/guillaume/files/MultiplicityMap/DATA/thrScan",
-
+	"directoryxx" : "/home/guillaume/files/MultiplicityMap/DATA/thrScan",
+	"directory" : "/home/guillaume/files/MultiplicityMap/DATA/SPS_Oct2015",
+	
 	"runs" : 
 	[
 		{ "file" : "Eff_730630.root" , "thresholds" : [188,130,168] },
