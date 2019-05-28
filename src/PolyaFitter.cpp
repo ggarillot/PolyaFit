@@ -14,6 +14,12 @@ PolyaFitter::PolyaFitter()
 	parametersLimits = { {zeroLimit,maxValue} , {zeroLimit,maxValue} , {0.0,1.0} } ;
 }
 
+double PolyaFitter::polyaVsThr(double x , const double* params)
+{
+	double a[1] = {x} ;
+	return polyaVsThr(a,params) ;
+}
+
 double PolyaFitter::polyaVsThr(const double* x , const double* params)
 {
 	double alpha = params[0]/params[1] ;

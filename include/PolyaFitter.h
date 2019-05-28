@@ -42,6 +42,7 @@ class PolyaFitter : public Fitter
 		PolyaFitter() ;
 		~PolyaFitter() = default ;
 
+		static double polyaVsThr(double x , const double* params) ;
 		static double polyaVsThr(const double* x , const double* params) ;
 		double eval(double x , const double* params) ;
 
