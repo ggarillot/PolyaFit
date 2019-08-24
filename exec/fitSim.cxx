@@ -34,9 +34,9 @@ int main(int argc , char** argv)
 
 //	std::stringstream filePath ; filePath << "/home/garillot/files/PolyaScan/MulResults/map_" << qbar << "_" << delta << "_" << d << ".root" ;
 //	a.ProcessFile( filePath.str() ) ;
-	a.ProcessFile( inputFile ) ;
+    a.ProcessSimu( inputFile ) ;
 
-	a.fitAllGraphs() ;
+	a.fitAllEffGraphs() ;
 	a.fitAllMulGraphs() ;
 
 	std::cout << "write tree" << std::endl ;

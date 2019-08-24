@@ -11,6 +11,9 @@
 #include <Math/GSLSimAnMinimizer.h>
 #include <Math/Functor.h>
 
+constexpr double Minimisation::minValue ;
+constexpr double Minimisation::maxValue ;
+
 Minimisation::Minimisation(unsigned int nParam_)
 	: nParameters(nParam_)
 {

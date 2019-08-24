@@ -34,9 +34,6 @@ class Minimisation
 		static constexpr double minValue = -5e6 ; //for MINUIT
 		static constexpr double maxValue = 5e6 ; //for MINUIT
 
-//		static constexpr double minValue = std::numeric_limits<double>::min() ;
-//		static constexpr double maxValue = std::numeric_limits<double>::max() ;
-
 	protected :
 		unsigned int nParameters ;
 		std::vector<double> parameters = {} ;

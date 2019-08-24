@@ -13,6 +13,5 @@
 		{ "file" : "Eff_743858.root"      , "thresholds" : [300,211,267] } ,
 		{ "file" : "Eff_280-192-248.root" , "thresholds" : [280,192,248] } ,
 		{ "file" : "Eff_240-163-216.root" , "thresholds" : [240,163,216] }
-
 	]
 }

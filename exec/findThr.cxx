@@ -18,18 +18,19 @@
 
 int main(int argc , char** argv)
 {
-	if ( argc != 4 )
+	if ( argc != 5 )
 	{
 		std::cerr << "ERROR : problem with arguments passed for the program" << std::endl ;
 		return -1 ;
 	}
 
-	double mul_ = atof(argv[1]) ;
-	double eff2_ = atof(argv[2]) ;
-	double eff3_ = atof(argv[3]) ;
+	std::string inputFile = std::string(argv[1]) ;
+	double mul_ = atof(argv[2]) ;
+	double eff2_ = atof(argv[3]) ;
+	double eff3_ = atof(argv[4]) ;
 
 
-	TFile* file = new TFile("/home/garillot/Code/PolyaFit/resData.root") ;
+	TFile* file = new TFile( inputFile.c_str() ) ;
 	TTree* tree = dynamic_cast<TTree*>(file->Get("tree")) ;
 
 	int layerID ;
@@ -59,9 +60,9 @@ int main(int argc , char** argv)
 	tree->SetBranchAddress("minimStatus" , &minimStatus) ;
 
 
-	TFile* fileOut = new TFile("/home/garillot/Code/PolyaFit/targetThr.root" , "RECREATE") ;
+	TFile* fileOut = new TFile("targetThr.root" , "RECREATE") ;
 	TTree* treeOut = new TTree("tree" , "tree") ;
-	treeOut->SetDirectory(0) ;
+	treeOut->SetDirectory(nullptr) ;
 
 	double thr1 = 0 ;
 	double thr2 = 0 ;
@@ -109,8 +110,10 @@ int main(int argc , char** argv)
 		thr1 = std::exp( std::log( (mul-c)/f )/p) ;
 
 		dac1 = static_cast<int>( thr1*700 + 90 ) ;
+
+		//set first threshold limits
 		dac1 = std::min(dac1,440) ;
-		dac1 = std::max(dac1,200) ;
+		dac1 = std::max(dac1,170) ;
 
 		double params[] = {qbar,delta,eff0} ;
 
@@ -133,6 +136,8 @@ int main(int argc , char** argv)
 		}
 
 		dac2 = static_cast<int>( thr2*80 + 98 ) ;
+
+		//set second threshold limits
 		dac2 = std::min(dac2 , 500) ;
 		dac2 = std::max(dac2 , 130) ;
 
@@ -153,6 +158,7 @@ int main(int argc , char** argv)
 
 		dac3 = static_cast<int>( thr3*16.3 + 98 ) ;
 
+		//set third threshold limits
 		dac3 = std::min(dac3 , 700) ;
 		dac3 = std::max(dac3 , 130) ;
 
@@ -165,7 +171,7 @@ int main(int argc , char** argv)
 	fileOut->Close() ;
 
 
-	TFile* filer = new TFile("/home/garillot/Code/PolyaFit/targetThr.root" , "READ") ;
+	TFile* filer = new TFile("targetThr.root" , "READ") ;
 	TTree* treer = dynamic_cast<TTree*>(filer->Get("tree")) ;
 
 	treer->SetBranchAddress("LayerID" , &layerID) ;

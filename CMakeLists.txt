@@ -7,23 +7,15 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6 FATAL_ERROR)
 # project name
 PROJECT( PolyaFit )
 
-### DEPENDENCIES ############################################################
-
-FIND_PACKAGE( ILCUTIL REQUIRED COMPONENTS ILCSOFT_CMAKE_MODULES )
-
-# load default settings from ILCSOFT_CMAKE_MODULES
-INCLUDE( ilcsoft_default_settings )
-
-FIND_PACKAGE( ROOT REQUIRED COMPONENTS TMVA XMLIO Minuit MLP MathMore MathCore Minuit2 ) # minimum required Marlin version
+FIND_PACKAGE( ROOT REQUIRED COMPONENTS XMLIO Minuit MathMore MathCore Minuit2 )
 INCLUDE_DIRECTORIES( SYSTEM ${ROOT_INCLUDE_DIRS} )
 LINK_LIBRARIES( ${ROOT_LIBRARIES} )
 ADD_DEFINITIONS( ${ROOT_DEFINITIONS} )
 
 ### LIBRARY #################################################################
 
-
 # definitions to pass to the compiler
-ADD_DEFINITIONS( "-Wall -ansi -pedantic -std=c++11" )
+ADD_DEFINITIONS( "-Wall -ansi -pedantic -std=c++11 -O2 -Weffc++" )
 ADD_DEFINITIONS( "-Wno-long-long" )
 
 # include directories
@@ -32,8 +24,6 @@ INCLUDE_DIRECTORIES( ./include )
 # add library
 AUX_SOURCE_DIRECTORY( ./src library_sources )
 
-# display some variables and write them to cache
-DISPLAY_STD_VARIABLES()
 
 file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cpp)
 

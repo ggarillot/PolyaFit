@@ -23,8 +23,8 @@ class GraphManager
 
 		struct AsicID
 		{
-				AsicID() : layerID(-1) , difID(0) , asicID(0) {}
-				AsicID(int lID , int dID , int aID) : layerID(lID) , difID(dID) , asicID(aID) {}
+                AsicID(int lID = -1 , int dID = 0 , int aID = 0)
+                    : layerID(lID) , difID(dID) , asicID(aID) {}
 				int layerID ;
 				int difID ;
 				int asicID ;
@@ -45,13 +45,11 @@ class GraphManager
 
 		void openGraphs(std::string fileName) ;
 
-		//		void createGraphsData() ;
-
 		void writeGraphsInFile(std::string fileName) ;
 
-		PolyaFitResult fitGraph(int layer , int dif , int asic) const ;
-		PolyaFitResult fitGraph(AsicID id) const ;
-		std::map<AsicID,PolyaFitResult> fitAllGraphs() ;
+        PolyaFitResult fitEffGraph(int layer , int dif , int asic) const ;
+        PolyaFitResult fitEffGraph(AsicID id) const ;
+        std::map<AsicID,PolyaFitResult> fitAllEffGraphs() ;
 
 		MultiplicityFitResult fitMulGraph(int layer , int dif , int asic) const ;
 		MultiplicityFitResult fitMulGraph(AsicID id) const ;
@@ -60,7 +58,7 @@ class GraphManager
 		void writeResultTree(std::string fileName) ;
 		void writeResultTree(double qbar , double delta) ;
 
-		void ProcessFile(std::string fileName) ;
+        void ProcessSimu(std::string fileName) ;
 		void ProcessData(std::string jsonFileName) ;
 
 		TGraphAsymmErrors* getGraph(int layer , int dif , int asic) const ;
@@ -73,11 +71,11 @@ class GraphManager
 
 		void reset() ;
 
+        void setColor(Color_t col) { color = col ; }
+
 	protected :
 
-		static void addPoint(TGraphErrors* graph , double x , double y , double ey) ;
-		static void addPoint(TGraphAsymmErrors* graph , double x , double y , double ey) ;
-		static void addPoint(TGraphAsymmErrors* graph , double x , double y , double eylow , double eyhigh) ;
+        Color_t color = kBlack ;
 
 		void openGraphsInLayer(TDirectoryFile* layerDir) ;
 

@@ -46,7 +46,7 @@ void Fitter::getPointsFromGraph(const TGraph* graph)
 
 		if ( graph->GetErrorYhigh( static_cast<int>(i) ) < zeroLimit && (1.0-values[i]) > zeroLimit )
 		{
-			std::cout << "errhigh" << i << " = 0 , set to 1e-12 instead" << std::endl ;
+			std::cout << "errhigh " << i << " = 0 , set to 1e-12 instead" << std::endl ;
 			upperErrors[i] = 1e-12 ;
 		}
 		else

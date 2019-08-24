@@ -107,9 +107,9 @@ void GraphManager::openGraphsInLayer(TDirectoryFile* layerDir)
 	}
 }
 
-void GraphManager::ProcessFile(std::string fileName)
+void GraphManager::ProcessSimu(std::string fileName)
 {
-	std::cout << "ProcessFile" << std::endl ;
+	std::cout << "Process Simulation File..." << std::endl ;
 	TFile* file = new TFile(fileName.c_str() , "READ") ;
 	TTree* tree = dynamic_cast<TTree*>( file->Get("tree") ) ;
 	if (!tree)
@@ -160,20 +160,25 @@ void GraphManager::ProcessFile(std::string fileName)
 		std::vector<double> low( efficiencies->size() , 0 ) ;
 		std::vector<double> high( efficiencies->size() , 0 ) ;
 
-		for ( unsigned int i = 0 ; i < efficiencies->size() ; ++i )
+		for ( std::size_t i = 0 ; i < efficiencies->size() ; ++i )
 		{
 			low[i] = efficiencies->at(i) - efficienciesLowerBound->at(i) ;
 			high[i] = efficienciesUpperBound->at(i) - efficiencies->at(i) ;
 		}
 		graph = new TGraphAsymmErrors( static_cast<int>( thresholds->size() ) , &(*thresholds)[0] , &(*efficiencies)[0] , nullptr , nullptr , &(low)[0] , &(high)[0] ) ;
 		graph->SetMarkerStyle(20) ;
+		graph->SetLineColor(color) ;
+		graph->SetMarkerColor(color) ;
 
 		mulGraph = new TGraphErrors( static_cast<int>( thresholds->size() ) , &(*thresholds)[0] , &(*multiplicities)[0] , nullptr , &(*multiplicitiesError)[0] ) ;
 		mulGraph->SetMarkerStyle(20) ;
+		mulGraph->SetLineColor(color) ;
+		mulGraph->SetMarkerColor(color) ;
 
 		graphMap.insert( std::make_pair(asicKey , graph) ) ;
 		graphMulMap.insert( std::make_pair(asicKey , mulGraph) ) ;
 
+		// assuming a lowest threshold of 0.114pC
 		mulMap.insert( std::make_pair(asicKey , multiplicities->at(0)) ) ;
 		mulErrMap.insert( std::make_pair(asicKey , multiplicitiesError->at(0)) ) ;
 	}
@@ -258,11 +263,7 @@ void GraphManager::ProcessData(std::string jsonFileName)
 		std::vector<double> globalMul(3 , 0.0) ;
 		std::vector<double> globalMulSq(3 , 0.0) ;
 
-		//		double globalMul = 0.0 ;
-		//		double globalMulSq = 0.0 ;
-
 		int nOkAsicsGlobal = 0 ;
-
 
 		int iEntry = 0 ;
 		while ( tree->GetEntry(iEntry++) )
@@ -289,6 +290,8 @@ void GraphManager::ProcessData(std::string jsonFileName)
 			if ( it == graphMap.end() )
 			{
 				TGraphAsymmErrors* graph = new TGraphAsymmErrors ;
+				graph->SetLineColor(color) ;
+				graph->SetMarkerColor(color) ;
 				graphMap.insert( std::make_pair(asicKey , graph) ) ;
 				it = graphMap.find(asicKey) ;
 			}
@@ -296,11 +299,17 @@ void GraphManager::ProcessData(std::string jsonFileName)
 			if ( itMul == graphMulMap.end() )
 			{
 				TGraphErrors* graph = new TGraphErrors ;
+				graph->SetLineColor(color) ;
+				graph->SetMarkerColor(color) ;
 				graphMulMap.insert( std::make_pair(asicKey , graph) ) ;
 				itMul = graphMulMap.find(asicKey) ;
 			}
 
 			unsigned int c = 0 ;
+
+			// for the October 2015 scan the first threshold of the layer 47 has a weird behaviour so I don't take it into account
+			// uncomment if you run October 2015
+
 			if ( i != mulRef && layerID == 47 )
 				c = 1 ;
 
@@ -310,7 +319,11 @@ void GraphManager::ProcessData(std::string jsonFileName)
 				auto errHigh = efficienciesUpperBound->at(j) - efficiencies->at(j) ;
 
 				assert( errLow >= 0 && errHigh >= 0 ) ;
-				addPoint(it->second, thresholds.at(j), efficiencies->at(j) , errLow , errHigh ) ;
+
+				auto graphEff = it->second ;
+				int iPoint = graphEff->GetN() ;
+				graphEff->SetPoint( iPoint , thresholds.at(j) , efficiencies->at(j) ) ;
+				graphEff->SetPointError( iPoint , 0 , 0 , errLow , errHigh ) ;
 
 				globalEff.at(j) += efficiencies->at(j) ;
 
@@ -318,7 +331,12 @@ void GraphManager::ProcessData(std::string jsonFileName)
 					continue ;
 				if ( multiplicities->at(j) < std::numeric_limits<double>::epsilon() )
 					continue ;
-				addPoint(itMul->second, thresholds.at(j), multiplicities->at(j) , multiplicitiesError->at(j) ) ;
+
+				auto graphMul = itMul->second ;
+				iPoint = graphMul->GetN() ;
+				graphMul->SetPoint( iPoint , thresholds.at(j) , multiplicities->at(j) ) ;
+				graphMul->SetPointError( iPoint , 0 , multiplicitiesError->at(j) ) ;
+
 				globalMul.at(j) += multiplicities->at(j) ;
 				globalMulSq.at(j) += multiplicities->at(j)*multiplicities->at(j) ;
 
@@ -368,7 +386,7 @@ void GraphManager::writeGraphsInFile(std::string fileName)
 	file->Close() ;
 }
 
-PolyaFitResult GraphManager::fitGraph(AsicID id) const
+PolyaFitResult GraphManager::fitEffGraph(AsicID id) const
 {
 	auto it = graphMap.find( id ) ;
 	if ( it == graphMap.end() )
@@ -389,17 +407,17 @@ PolyaFitResult GraphManager::fitGraph(AsicID id) const
 	b.minimize() ;
 	return b.getFitResult() ;
 }
-PolyaFitResult GraphManager::fitGraph(int layer , int dif , int asic) const
+PolyaFitResult GraphManager::fitEffGraph(int layer , int dif , int asic) const
 {
-	return fitGraph( AsicID(layer,dif,asic)) ;
+	return fitEffGraph( AsicID(layer,dif,asic)) ;
 }
 
-std::map<GraphManager::AsicID,PolyaFitResult> GraphManager::fitAllGraphs()
+std::map<GraphManager::AsicID,PolyaFitResult> GraphManager::fitAllEffGraphs()
 {
 	resultMap.clear() ;
 
 	for ( std::map<AsicID,TGraphAsymmErrors*>::iterator it = graphMap.begin() ; it != graphMap.end() ; ++it )
-		resultMap.insert( std::make_pair(it->first , fitGraph(it->first.layerID , it->first.difID , it->first.asicID) ) ) ;
+		resultMap.insert( std::make_pair(it->first , fitEffGraph(it->first.layerID , it->first.difID , it->first.asicID) ) ) ;
 
 	return resultMap ;
 }
@@ -542,42 +560,6 @@ void GraphManager::writeResultTree(double qbar , double delta)
 {
 	std::stringstream fileName ; fileName << qbar << "_" << delta << "_results.root" ;
 	writeResultTree( fileName.str() ) ;
-}
-
-void GraphManager::addPoint(TGraphErrors* graph , double x , double y , double ey)
-{
-	if (!graph)
-	{
-		std::cerr << "ERROR in GraphManager::addPoint : graph ptr = NULL" << std::endl ;
-		return ;
-	}
-	int point = graph->GetN() ;
-	graph->SetPoint(point , x , y) ;
-	graph->SetPointError(point , 0 , ey) ;
-}
-
-void GraphManager::addPoint(TGraphAsymmErrors* graph , double x , double y , double ey)
-{
-	if (!graph)
-	{
-		std::cerr << "ERROR in GraphManager::addPoint : graph ptr = NULL" << std::endl ;
-		return ;
-	}
-	int point = graph->GetN() ;
-	graph->SetPoint(point , x , y) ;
-	graph->SetPointError(point , 0 , 0 , ey , ey) ;
-}
-
-void GraphManager::addPoint(TGraphAsymmErrors* graph , double x , double y , double eylow , double eyhigh)
-{
-	if (!graph)
-	{
-		std::cerr << "ERROR in GraphManager::addPoint : graph ptr = NULL" << std::endl ;
-		return ;
-	}
-	int point = graph->GetN() ;
-	graph->SetPoint(point , x , y) ;
-	graph->SetPointError(point , 0 , 0 , eylow , eyhigh) ;
 }
 
 TGraphAsymmErrors* GraphManager::getGraph(AsicID id) const

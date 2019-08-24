@@ -14,19 +14,23 @@
 #include "GraphManager.h"
 #include "PolyaFitter.h"
 
-int main()
+int main(int argc , char** argv)
 {
+	if ( argc != 2 )
+	{
+		std::cerr << "ERROR : problem with arguments passed for the program" << std::endl ;
+		return 1 ;
+	}
+
+	std::string jsonFile = argv[1] ;
+
 	gStyle->SetOptStat(0) ;
 
 	GraphManager a ;
 
-	//	a.ProcessData( std::string("/home/garillot/files/PolyaScan/DATA") ) ;
-	a.ProcessData( std::string("/home/guillaume/PolyaFit/json/SPS_Sept2018.json") ) ;
-	//	a.ProcessData( std::string("/home/guillaume/PolyaFit/json/SPS_Oct2015.json") ) ;
-	//	b.ProcessFile( std::string("/home/garillot/files/TUNINGTEMP/Eff_cosmicMuons_Analog.root") ) ;
-	//	b.ProcessFile( std::string("/home/garillot/SDHCALMarlinProcessor/Eff_mu-_50GeV_Analog.root") ) ;
+	a.ProcessData(jsonFile) ;
 
-	auto aRes = a.fitAllGraphs() ;
+	auto aRes = a.fitAllEffGraphs() ;
 	auto aMulRes = a.fitAllMulGraphs() ;
 
 	std::map<GraphManager::AsicID , TCanvas*> canvasMap ;
@@ -171,7 +175,7 @@ int main()
 
 
 
-	TFile* file = new TFile("draw2018.root" , "RECREATE") ;
+	TFile* file = new TFile("drawData.root" , "RECREATE") ;
 	file->cd() ;
 
 	TDirectoryFile* dir = new TDirectoryFile("dir","dir") ;
